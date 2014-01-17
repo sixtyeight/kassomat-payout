@@ -81,10 +81,10 @@ void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
 void mc_setup(struct m_metacash *metacash);
 
 // cash hardware result parsing
-void mc_handle_events_hopper(struct m_device *device, struct m_metacash *metacash,
-		SSP_POLL_DATA6 *poll);
-void mc_handle_events_validator(struct m_device *device, struct m_metacash *metacash,
-		SSP_POLL_DATA6 *poll);
+void mc_handle_events_hopper(struct m_device *device,
+		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+void mc_handle_events_validator(struct m_device *device,
+		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 
 // handling the telnet client commands
 void mc_handle_cmd_enable(struct m_network *network, char *buf,
@@ -96,6 +96,8 @@ void mc_handle_cmd_payout(struct m_network *network, char *buf,
 void mc_handle_cmd_show_credit(struct m_network *network,
 		struct m_metacash *metacash);
 void mc_handle_cmd_clear_credit(struct m_network *network,
+		struct m_metacash *metacash);
+void mc_handle_cmd_empty(struct m_network *network, char *buf,
 		struct m_metacash *metacash);
 void mc_handle_cmd_quit(struct m_network *network);
 void mc_handle_cmd_shutdown(struct m_network *network);
@@ -212,7 +214,9 @@ void mc_nw_handle_client_command(struct m_network *network,
 
 		printf("server: received command: %s\n", cmd);
 
-		if (strcmp(cmd, "payout") == 0) {
+		if (strcmp(cmd, "empty") == 0) {
+			mc_handle_cmd_empty(network, buf, metacash);
+		} else if (strcmp(cmd, "payout") == 0) {
 			mc_handle_cmd_payout(network, buf, metacash);
 		} else if (strcmp(cmd, "enable") == 0) {
 			mc_handle_cmd_enable(network, buf, metacash);
@@ -285,6 +289,19 @@ void mc_handle_cmd_disable(struct m_network *network, char *buf,
 		ssp6_disable(&metacash->hopper.sspC);
 	} else if (strcmp(device, "n") == 0) {
 		ssp6_disable(&metacash->validator.sspC);
+	} else {
+		mc_nw_send_client_message(network, "unknown device");
+	}
+	mc_nw_send_client_message(network, "\n> ");
+}
+
+void mc_handle_cmd_empty(struct m_network *network, char *buf,
+		struct m_metacash *metacash) {
+	char *device = strtok(NULL, " \n\r");
+	if (strcmp(device, "c") == 0) {
+		mc_ssp_empty(&metacash->hopper.sspC);
+	} else if (strcmp(device, "n") == 0) {
+		mc_ssp_empty(&metacash->validator.sspC);
 	} else {
 		mc_nw_send_client_message(network, "unknown device");
 	}
@@ -417,8 +434,8 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 // business stuff
-void mc_handle_events_hopper(struct m_device *device, struct m_metacash *metacash,
-		SSP_POLL_DATA6 *poll) {
+void mc_handle_events_hopper(struct m_device *device,
+		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	int i;
 	for (i = 0; i < poll->event_count; ++i) {
 		printf("processing event #%03d (0x%02X): ", i, poll->events[i].event);
@@ -494,8 +511,8 @@ void mc_handle_events_hopper(struct m_device *device, struct m_metacash *metacas
 	}
 }
 
-void mc_handle_events_validator(struct m_device *device, struct m_metacash *metacash,
-		SSP_POLL_DATA6 *poll) {
+void mc_handle_events_validator(struct m_device *device,
+		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	int i;
 	for (i = 0; i < poll->event_count; ++i) {
 		printf("processing event #%03d (0x%02X): ", i, poll->events[i].event);
