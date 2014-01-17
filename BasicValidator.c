@@ -3,6 +3,7 @@
 #include <asm-generic/socket.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -10,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-//#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -78,6 +78,8 @@ void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc);
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
 
 // metacash
+int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
+		struct m_network *network);
 void mc_setup(struct m_metacash *metacash);
 
 // cash hardware result parsing
@@ -127,12 +129,8 @@ int main(int argc, char *argv[]) {
 	metacash.validator.parsePoll = mc_handle_events_validator;
 
 	// parse the command line arguments
-	if (argc >= 2) {
-		metacash.serialDevice = argv[1];
-	}
-
-	if (argc >= 3) {
-		network.port = argv[2];
+	if (parseCmdLine(argc, argv, &metacash, &network)) {
+		return 1;
 	}
 
 	// open the serial device
@@ -168,6 +166,34 @@ int main(int argc, char *argv[]) {
 	}
 
 	mc_ssp_close_serial_device(&metacash);
+
+	return 0;
+}
+
+int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
+		struct m_network *network) {
+	opterr = 0;
+
+	char c;
+	while ((c = getopt(argc, argv, "p:d:")) != -1)
+		switch (c) {
+		case 'd':
+			metacash->serialDevice = optarg;
+			break;
+		case 'p':
+			network->port = optarg;
+			break;
+		case '?':
+			if (optopt == 'c' || optopt == 'p')
+				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+			else if (isprint(optopt))
+				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+			else
+				fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+			return 1;
+		default:
+			return 1;
+		}
 
 	return 0;
 }
