@@ -92,6 +92,8 @@ void mc_handle_events_validator(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 
 // handling the telnet client commands
+void mc_handle_cmd_reset(struct m_network *network, char *buf,
+		struct m_metacash *metacash);
 void mc_handle_cmd_enable(struct m_network *network, char *buf,
 		struct m_metacash *metacash);
 void mc_handle_cmd_disable(struct m_network *network, char *bufs,
@@ -243,7 +245,9 @@ void mc_nw_handle_client_command(struct m_network *network,
 
 		printf("server: received command: %s\n", cmd);
 
-		if (strcmp(cmd, "empty") == 0) {
+		if (strcmp(cmd, "reset") == 0) {
+			mc_handle_cmd_reset(network, buf, metacash);
+		} else if (strcmp(cmd, "empty") == 0) {
 			mc_handle_cmd_empty(network, buf, metacash);
 		} else if (strcmp(cmd, "payout") == 0) {
 			mc_handle_cmd_payout(network, buf, metacash);
@@ -265,6 +269,20 @@ void mc_nw_handle_client_command(struct m_network *network,
 			mc_nw_send_client_message(network, "\n> ");
 		}
 	}
+}
+
+void mc_handle_cmd_reset(struct m_network *network, char *buf,
+		struct m_metacash *metacash) {
+	char *device = strtok(NULL, " \n\r");
+
+	if (strcmp(device, "c") == 0) {
+		ssp6_reset(&metacash->hopper.sspC);
+	} else if (strcmp(device, "n") == 0) {
+		ssp6_reset(&metacash->validator.sspC);
+	} else {
+		mc_nw_send_client_message(network, "unknown device");
+	}
+	mc_nw_send_client_message(network, "\n> ");
 }
 
 void mc_handle_cmd_payout(struct m_network *network, char *buf,
@@ -726,9 +744,8 @@ int mc_ssp_open_serial_device(struct m_metacash *metacash) {
 	{
 		struct stat buffer;
 		int fildes = open(metacash->serialDevice, O_RDWR);
-		if(fildes == 0) {
-			printf("ERROR: device %s not found\n",
-					metacash->serialDevice);
+		if (fildes == 0) {
+			printf("ERROR: device %s not found\n", metacash->serialDevice);
 
 			return 1;
 		}
