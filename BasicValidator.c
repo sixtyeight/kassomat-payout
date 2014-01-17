@@ -14,6 +14,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "port_linux.h"
 #include "ssp_defines.h"
 #include "ssp_helpers.h"
@@ -718,6 +721,30 @@ void mc_setup(struct m_metacash *metacash) {
 int mc_ssp_open_serial_device(struct m_metacash *metacash) {
 	// open the serial device
 	printf("opening serial device: %s\n", metacash->serialDevice);
+
+	{
+		struct stat buffer;
+		int fildes = open(metacash->serialDevice, O_RDWR);
+		if(fildes == 0) {
+			printf("ERROR: device %s not found\n",
+					metacash->serialDevice);
+
+			return 1;
+		}
+
+		fstat(fildes, &buffer); // TODO: error handling
+
+		close(fildes);
+
+		switch (buffer.st_mode & S_IFMT) {
+		case S_IFCHR:
+			break;
+		default:
+			printf("ERROR: %s is not a device\n", metacash->serialDevice);
+			return 1;
+		}
+	}
+
 	if (open_ssp_port(metacash->serialDevice) == 0) {
 		printf("ERROR: could not open serial device %s\n",
 				metacash->serialDevice);
