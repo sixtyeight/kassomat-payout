@@ -406,6 +406,7 @@ int mc_nw_setup_server(struct m_network *network) {
 		if (setsockopt(network->serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes,
 				sizeof(int)) == -1) {
 			perror("setsockopt");
+			freeaddrinfo(servinfo); // all done with this structure
 			return 2;
 		}
 
@@ -420,12 +421,12 @@ int mc_nw_setup_server(struct m_network *network) {
 		break;
 	}
 
+	freeaddrinfo(servinfo); // all done with this structure
+
 	if (p == NULL) {
 		fprintf(stderr, "server: failed to bind\n");
 		return 3;
 	}
-
-	freeaddrinfo(servinfo); // all done with this structure
 
 	if (listen(network->serverSocket, 1) == -1) { // 1 connection max
 		perror("listen");
