@@ -719,8 +719,7 @@ void mc_setup(struct m_metacash *metacash) {
 int mc_ssp_open_serial_device(struct m_metacash *metacash) {
 	// open the serial device
 	printf("opening serial device: %s\n", metacash->serialDevice);
-	const char *port = "/dev/ttyACM0";
-	if (open_ssp_port(port) == 0) {
+	if (open_ssp_port(metacash->serialDevice) == 0) {
 		printf("ERROR: could not open serial device %s\n",
 				metacash->serialDevice);
 		return 1;
