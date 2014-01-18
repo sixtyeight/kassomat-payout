@@ -82,6 +82,8 @@ void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc);
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile);
+SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
@@ -95,6 +97,10 @@ void mc_handle_events_validator(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 
 // handling the telnet client commands
+void mc_handle_cmd_on(struct m_network *network, char *buf,
+		struct m_metacash *metacash);
+void mc_handle_cmd_off(struct m_network *network, char *buf,
+		struct m_metacash *metacash);
 void mc_handle_cmd_reset(struct m_network *network, char *buf,
 		struct m_metacash *metacash);
 void mc_handle_cmd_enable(struct m_network *network, char *buf,
@@ -252,7 +258,11 @@ void mc_nw_handle_client_command(struct m_network *network,
 
 		printf("server: received command: %s\n", cmd);
 
-		if (strcmp(cmd, "bezel") == 0) {
+		if (strcmp(cmd, "on") == 0) {
+			mc_handle_cmd_on(network, buf, metacash);
+		} else if (strcmp(cmd, "off") == 0) {
+			mc_handle_cmd_off(network, buf, metacash);
+		} else if (strcmp(cmd, "bezel") == 0) {
 			mc_handle_cmd_configure_bezel(network, buf, metacash);
 		} else if (strcmp(cmd, "reset") == 0) {
 			mc_handle_cmd_reset(network, buf, metacash);
@@ -278,6 +288,18 @@ void mc_nw_handle_client_command(struct m_network *network,
 			mc_nw_send_client_message(network, "\n> ");
 		}
 	}
+}
+
+void mc_handle_cmd_on(struct m_network *network, char *buf,
+		struct m_metacash *metacash) {
+	mc_ssp_display_on(&metacash->validator.sspC);
+	mc_nw_send_client_message(network, "\n> ");
+}
+
+void mc_handle_cmd_off(struct m_network *network, char *buf,
+		struct m_metacash *metacash) {
+	mc_ssp_display_off(&metacash->validator.sspC);
+	mc_nw_send_client_message(network, "\n> ");
 }
 
 void mc_handle_cmd_configure_bezel(struct m_network *network, char *buf,
@@ -963,6 +985,40 @@ void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc) {
 			}
 		}
 	}
+}
+
+SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = 0x3;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	// no data to parse
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = 0x4;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	// no data to parse
+
+	return resp;
 }
 
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
