@@ -40,6 +40,7 @@ struct m_device {
 };
 
 struct m_metacash {
+	int quit;
 	char *serialDevice;
 
 	struct m_credit credit;
@@ -107,7 +108,7 @@ void mc_handle_cmd_clear_credit(struct m_network *network,
 void mc_handle_cmd_empty(struct m_network *network, char *buf,
 		struct m_metacash *metacash);
 void mc_handle_cmd_quit(struct m_network *network);
-void mc_handle_cmd_shutdown(struct m_network *network);
+void mc_handle_cmd_shutdown(struct m_network *network, struct m_metacash *metacash);
 
 static const char *CURRENCY = "EUR";
 static const char ROUTE_CASHBOX = 0x01;
@@ -120,6 +121,7 @@ int main(int argc, char *argv[]) {
 	network.isClientConnected = 0;
 
 	struct m_metacash metacash;
+	metacash.quit = 0;
 	metacash.credit.amount = 0;
 	metacash.serialDevice = "/dev/ttyACM0";
 
@@ -151,7 +153,7 @@ int main(int argc, char *argv[]) {
 
 	printf("metacash open for business :D\n\n");
 
-	while (1) {
+	while (metacash.quit == 0) {
 		// look for connection if we are unconnected
 		if (!network.isClientConnected) {
 			mc_nw_connect_client(&network);
@@ -262,7 +264,7 @@ void mc_nw_handle_client_command(struct m_network *network,
 		} else if (strcmp(cmd, "quit") == 0) {
 			mc_handle_cmd_quit(network);
 		} else if (strcmp(cmd, "shutdown") == 0) {
-			mc_handle_cmd_shutdown(network);
+			mc_handle_cmd_shutdown(network, metacash);
 		} else {
 			mc_nw_send_client_message(network, "unknown command: ");
 			mc_nw_send_client_message(network, buf);
@@ -361,10 +363,10 @@ void mc_handle_cmd_quit(struct m_network *network) {
 	network->isClientConnected = 0;
 }
 
-void mc_handle_cmd_shutdown(struct m_network *network) {
+void mc_handle_cmd_shutdown(struct m_network *network, struct m_metacash *metacash) {
 	mc_nw_send_client_message(network, "shutting down metacash\n");
 	mc_handle_cmd_quit(network);
-	exit(0);
+	metacash->quit = 1;
 }
 
 void mc_nw_send_client_message(struct m_network *network, char *message) {
