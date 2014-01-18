@@ -80,6 +80,8 @@ void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key);
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc);
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
+SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
+		unsigned char g, unsigned char b, unsigned char non_volatile);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
@@ -108,7 +110,10 @@ void mc_handle_cmd_clear_credit(struct m_network *network,
 void mc_handle_cmd_empty(struct m_network *network, char *buf,
 		struct m_metacash *metacash);
 void mc_handle_cmd_quit(struct m_network *network);
-void mc_handle_cmd_shutdown(struct m_network *network, struct m_metacash *metacash);
+void mc_handle_cmd_shutdown(struct m_network *network,
+		struct m_metacash *metacash);
+void mc_handle_cmd_configure_bezel(struct m_network *network, char *buf,
+		struct m_metacash *metacash);
 
 static const char *CURRENCY = "EUR";
 static const char ROUTE_CASHBOX = 0x01;
@@ -247,7 +252,9 @@ void mc_nw_handle_client_command(struct m_network *network,
 
 		printf("server: received command: %s\n", cmd);
 
-		if (strcmp(cmd, "reset") == 0) {
+		if (strcmp(cmd, "bezel") == 0) {
+			mc_handle_cmd_configure_bezel(network, buf, metacash);
+		} else if (strcmp(cmd, "reset") == 0) {
 			mc_handle_cmd_reset(network, buf, metacash);
 		} else if (strcmp(cmd, "empty") == 0) {
 			mc_handle_cmd_empty(network, buf, metacash);
@@ -271,6 +278,16 @@ void mc_nw_handle_client_command(struct m_network *network,
 			mc_nw_send_client_message(network, "\n> ");
 		}
 	}
+}
+
+void mc_handle_cmd_configure_bezel(struct m_network *network, char *buf,
+		struct m_metacash *metacash) {
+	char r = atoi(strtok(NULL, " \n\r"));
+	char g = atoi(strtok(NULL, " \n\r"));
+	char b = atoi(strtok(NULL, " \n\r"));
+
+	mc_ssp_configure_bezel(&metacash->validator.sspC, r, g, b, 1);
+	mc_nw_send_client_message(network, "\n> ");
 }
 
 void mc_handle_cmd_reset(struct m_network *network, char *buf,
@@ -363,7 +380,8 @@ void mc_handle_cmd_quit(struct m_network *network) {
 	network->isClientConnected = 0;
 }
 
-void mc_handle_cmd_shutdown(struct m_network *network, struct m_metacash *metacash) {
+void mc_handle_cmd_shutdown(struct m_network *network,
+		struct m_metacash *metacash) {
 	mc_nw_send_client_message(network, "shutting down metacash\n");
 	mc_handle_cmd_quit(network);
 	metacash->quit = 1;
@@ -964,3 +982,24 @@ SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 	return resp;
 }
 
+SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
+		unsigned char g, unsigned char b, unsigned char non_volatile) {
+	sspC->CommandDataLength = 5;
+	sspC->CommandData[0] = 0x54;
+	sspC->CommandData[1] = r;
+	sspC->CommandData[2] = g;
+	sspC->CommandData[3] = b;
+	sspC->CommandData[4] = non_volatile;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	// no data to parse
+
+	return resp;
+}
