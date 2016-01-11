@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
 #include <asm-generic/socket.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
