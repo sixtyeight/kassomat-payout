@@ -117,6 +117,10 @@ void myPollEventFunction(int fd, short event, void *arg) {
 	printf("myPollEventFunction: Hello!\n");
 }
 
+void onMessageInTestTopicFunction(redisAsyncContext *c, void *foo, void *bar) {
+	printf("onMessageInTestTopicFunction: received a message in test-topic\n");
+}
+
 void connectCallback(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "Database error: %s\n", c->errstr);
@@ -133,16 +137,9 @@ void connectCallback(const redisAsyncContext *c, int status) {
 //	event_base_set(eventBase, &sspPollEvent);
 //	evtimer_add(&sspPollEvent, &time);
 
-	// setup timer for hello world event (print hello world every 3 seconds more or less)
-	struct timeval timeHello;
-	timeHello.tv_sec = 3;
-	timeHello.tv_usec = 0;
-
-	event_set(&myPollEvent, 0, EV_PERSIST, myPollEventFunction, NULL);
-	event_base_set(eventBase, &myPollEvent);
-	evtimer_add(&myPollEvent, &timeHello);
-
 	redisAsyncCommand(db, NULL, NULL, "SET component:ssp 1");
+
+	redisAsyncCommand(db, onMessageInTestTopicFunction, NULL, "SUBSCRIBE test-topic");
 }
 
 void disconnectCallback(const redisAsyncContext *c, int status) {
@@ -163,6 +160,15 @@ void testRedis() {
 	redisLibeventAttach(db, eventBase);
 	redisAsyncSetConnectCallback(db, connectCallback);
 	redisAsyncSetDisconnectCallback(db, disconnectCallback);
+
+	// setup timer for hello world event (print hello world every 3 seconds more or less)
+	struct timeval timeHello;
+	timeHello.tv_sec = 3;
+	timeHello.tv_usec = 0;
+
+	event_set(&myPollEvent, 0, EV_PERSIST, myPollEventFunction, NULL);
+	event_base_set(eventBase, &myPollEvent);
+	evtimer_add(&myPollEvent, &timeHello);
 
 	printf("testRedis: waiting forever at event_base_dispatch\n");
 	event_base_dispatch(eventBase);
