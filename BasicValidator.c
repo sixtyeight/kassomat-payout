@@ -1,18 +1,10 @@
-#include <arpa/inet.h>
-#include <asm-generic/errno.h>
-#include <asm-generic/socket.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include <sys/types.h>
@@ -50,29 +42,6 @@ struct m_metacash {
 	struct m_device validator;
 };
 
-struct m_network {
-	char *port;
-	int serverSocket;
-
-	int clientSocket;
-	int isClientConnected;
-};
-
-// mc_nw_* : metacash network functions (low level)
-
-// thanks to Brian "Beej Jorgensen" Hall for "Beej's Guide to Network Programming - Using Internet Sockets"
-// at http://beej.us/guide/bgnet/output/html/singlepage/bgnet.html
-
-int mc_nw_setup_server(struct m_network *network);
-void mc_nw_connect_client(struct m_network *network);
-void mc_nw_handle_client_command(struct m_network *network,
-		struct m_metacash *metacash);
-void mc_nw_send_client_message(struct m_network *network, char *message);
-void mc_nw_send_client_welcome(struct m_network *network);
-
-void sigchld_handler(int s);
-void *get_in_addr(struct sockaddr *sa);
-
 // mc_ssp_* : metacash ssp functions (cash hardware, low level)
 int mc_ssp_open_serial_device(struct m_metacash *metacash);
 void mc_ssp_close_serial_device(struct m_metacash *metacash);
@@ -87,8 +56,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 
 // metacash
-int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
-		struct m_network *network);
+int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
 void mc_setup(struct m_metacash *metacash);
 
 // cash hardware result parsing
@@ -97,41 +65,12 @@ void mc_handle_events_hopper(struct m_device *device,
 void mc_handle_events_validator(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 
-// handling the telnet client commands
-void mc_handle_cmd_on(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-void mc_handle_cmd_off(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-void mc_handle_cmd_reset(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-void mc_handle_cmd_enable(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-void mc_handle_cmd_disable(struct m_network *network, char *bufs,
-		struct m_metacash *metacash);
-void mc_handle_cmd_payout(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-void mc_handle_cmd_show_credit(struct m_network *network,
-		struct m_metacash *metacash);
-void mc_handle_cmd_clear_credit(struct m_network *network,
-		struct m_metacash *metacash);
-void mc_handle_cmd_empty(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-void mc_handle_cmd_quit(struct m_network *network);
-void mc_handle_cmd_shutdown(struct m_network *network,
-		struct m_metacash *metacash);
-void mc_handle_cmd_configure_bezel(struct m_network *network, char *buf,
-		struct m_metacash *metacash);
-
 static const char *CURRENCY = "EUR";
 static const char ROUTE_CASHBOX = 0x01;
 static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
 int main(int argc, char *argv[]) {
-	struct m_network network;
-	network.port = "1337";
-	network.isClientConnected = 0;
-
 	struct m_metacash metacash;
 	metacash.quit = 0;
 	metacash.credit.amount = 0;
@@ -148,7 +87,7 @@ int main(int argc, char *argv[]) {
 	metacash.validator.parsePoll = mc_handle_events_validator;
 
 	// parse the command line arguments
-	if (parseCmdLine(argc, argv, &metacash, &network)) {
+	if (parseCmdLine(argc, argv, &metacash)) {
 		return 1;
 	}
 
@@ -160,19 +99,9 @@ int main(int argc, char *argv[]) {
 	// setup the ssp commands, configure and initialize the hardware
 	mc_setup(&metacash);
 
-	// network stuff
-	mc_nw_setup_server(&network);
-
 	printf("metacash open for business :D\n\n");
 
 	while (metacash.quit == 0) {
-		// look for connection if we are unconnected
-		if (!network.isClientConnected) {
-			mc_nw_connect_client(&network);
-		} else { // look for commands from the client
-			mc_nw_handle_client_command(&network, &metacash);
-		}
-
 		// cash hardware
 		unsigned long amount = metacash.credit.amount;
 
@@ -189,8 +118,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
-		struct m_network *network) {
+int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	char c;
@@ -200,7 +128,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
 			metacash->serialDevice = optarg;
 			break;
 		case 'p':
-			network->port = optarg;
+			// TODO: port cmd argument unused for now
 			break;
 		case '?':
 			if (optopt == 'c' || optopt == 'p')
@@ -215,313 +143,6 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash,
 		}
 
 	return 0;
-}
-
-void mc_nw_send_client_welcome(struct m_network *network) {
-	mc_nw_send_client_message(network,
-			"welcome to      _                      _     \n");
-	mc_nw_send_client_message(network,
-			" _ __ ___   ___| |_ __ _  ___ __ _ ___| |__  \n");
-	mc_nw_send_client_message(network,
-			"| '_ ` _ \\ / _ \\ __/ _` |/ __/ _` / __| '_ \\ \n");
-	mc_nw_send_client_message(network,
-			"| | | | | |  __/ || (_| | (_| (_| \\__ \\ | | |\n");
-	mc_nw_send_client_message(network,
-			"|_| |_| |_|\\___|\\__\\__,_|\\___\\__,_|___/_| |_|\n");
-	mc_nw_send_client_message(network, "");
-}
-
-void mc_nw_handle_client_command(struct m_network *network,
-		struct m_metacash *metacash) {
-	char buf[512] = { 0 };
-	int byte_count;
-
-	byte_count = recv(network->clientSocket, buf, sizeof buf, 0);
-
-	if (byte_count == 0) {
-		printf("server: client disconnected\n");
-		close(network->clientSocket);
-		network->isClientConnected = 0;
-	} else if (byte_count == -1) {
-		// nothing sent from client
-	} else {
-		char *cmd = strtok(buf, " \n\r");
-
-		if (cmd == 0) {
-			mc_nw_send_client_message(network, "> ");
-			return;
-		}
-
-		int i;
-		for (i = 0; cmd[i]; i++) {
-			cmd[i] = tolower(cmd[i]);
-		}
-
-		printf("server: received command: %s\n", cmd);
-
-		if (strcmp(cmd, "on") == 0) {
-			mc_handle_cmd_on(network, buf, metacash);
-		} else if (strcmp(cmd, "off") == 0) {
-			mc_handle_cmd_off(network, buf, metacash);
-		} else if (strcmp(cmd, "bezel") == 0) {
-			mc_handle_cmd_configure_bezel(network, buf, metacash);
-		} else if (strcmp(cmd, "reset") == 0) {
-			mc_handle_cmd_reset(network, buf, metacash);
-		} else if (strcmp(cmd, "empty") == 0) {
-			mc_handle_cmd_empty(network, buf, metacash);
-		} else if (strcmp(cmd, "payout") == 0) {
-			mc_handle_cmd_payout(network, buf, metacash);
-		} else if (strcmp(cmd, "enable") == 0) {
-			mc_handle_cmd_enable(network, buf, metacash);
-		} else if (strcmp(cmd, "disable") == 0) {
-			mc_handle_cmd_disable(network, buf, metacash);
-		} else if (strcmp(cmd, "show") == 0) {
-			mc_handle_cmd_show_credit(network, metacash);
-		} else if (strcmp(cmd, "clear") == 0) {
-			mc_handle_cmd_clear_credit(network, metacash);
-		} else if (strcmp(cmd, "quit") == 0) {
-			mc_handle_cmd_quit(network);
-		} else if (strcmp(cmd, "shutdown") == 0) {
-			mc_handle_cmd_shutdown(network, metacash);
-		} else {
-			mc_nw_send_client_message(network, "unknown command: ");
-			mc_nw_send_client_message(network, buf);
-			mc_nw_send_client_message(network, "\n> ");
-		}
-	}
-}
-
-void mc_handle_cmd_on(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	mc_ssp_display_on(&metacash->validator.sspC);
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_off(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	mc_ssp_display_off(&metacash->validator.sspC);
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_configure_bezel(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	char r = atoi(strtok(NULL, " \n\r"));
-	char g = atoi(strtok(NULL, " \n\r"));
-	char b = atoi(strtok(NULL, " \n\r"));
-
-	mc_ssp_configure_bezel(&metacash->validator.sspC, r, g, b, 1);
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_reset(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	char *device = strtok(NULL, " \n\r");
-
-	if (strcmp(device, "c") == 0) {
-		ssp6_reset(&metacash->hopper.sspC);
-	} else if (strcmp(device, "n") == 0) {
-		ssp6_reset(&metacash->validator.sspC);
-	} else {
-		mc_nw_send_client_message(network, "unknown device");
-	}
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_payout(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	char *device = strtok(NULL, " ");
-	char *amount = strtok(NULL, " ");
-
-	if (strcmp(device, "c") == 0) {
-		mc_ssp_payout(&metacash->hopper.sspC, atoi(amount), "EUR");
-	} else if (strcmp(device, "n") == 0) {
-		mc_ssp_payout(&metacash->validator.sspC, atoi(amount), "EUR");
-	} else {
-		mc_nw_send_client_message(network, "unknown device");
-	}
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_show_credit(struct m_network *network,
-		struct m_metacash *metacash) {
-	mc_nw_send_client_message(network, "current credit: ");
-	char *c;
-
-	asprintf(&c, "%ld cents\n> ", metacash->credit.amount);
-	mc_nw_send_client_message(network, c);
-	free(c);
-}
-
-void mc_handle_cmd_clear_credit(struct m_network *network,
-		struct m_metacash *metacash) {
-	metacash->credit.amount = 0;
-	mc_handle_cmd_show_credit(network, metacash);
-}
-
-void mc_handle_cmd_enable(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	char *device = strtok(NULL, " \n\r");
-	if (strcmp(device, "c") == 0) {
-		ssp6_enable(&metacash->hopper.sspC);
-	} else if (strcmp(device, "n") == 0) {
-		ssp6_enable(&metacash->validator.sspC);
-	} else {
-		mc_nw_send_client_message(network, "unknown device");
-	}
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_disable(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	char *device = strtok(NULL, " \n\r");
-	if (strcmp(device, "c") == 0) {
-		ssp6_disable(&metacash->hopper.sspC);
-	} else if (strcmp(device, "n") == 0) {
-		ssp6_disable(&metacash->validator.sspC);
-	} else {
-		mc_nw_send_client_message(network, "unknown device");
-	}
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_empty(struct m_network *network, char *buf,
-		struct m_metacash *metacash) {
-	char *device = strtok(NULL, " \n\r");
-	if (strcmp(device, "c") == 0) {
-		mc_ssp_empty(&metacash->hopper.sspC);
-	} else if (strcmp(device, "n") == 0) {
-		mc_ssp_empty(&metacash->validator.sspC);
-	} else {
-		mc_nw_send_client_message(network, "unknown device");
-	}
-	mc_nw_send_client_message(network, "\n> ");
-}
-
-void mc_handle_cmd_quit(struct m_network *network) {
-	mc_nw_send_client_message(network, "bye\n> ");
-	close(network->clientSocket);
-	network->isClientConnected = 0;
-}
-
-void mc_handle_cmd_shutdown(struct m_network *network,
-		struct m_metacash *metacash) {
-	mc_nw_send_client_message(network, "shutting down metacash\n");
-	mc_handle_cmd_quit(network);
-	metacash->quit = 1;
-}
-
-void mc_nw_send_client_message(struct m_network *network, char *message) {
-	send(network->clientSocket, message, strlen(message), 0);
-}
-
-void mc_nw_connect_client(struct m_network *network) {
-	struct sockaddr_storage their_addr; // connector's address information
-	socklen_t sin_size;
-	char s[INET6_ADDRSTRLEN];
-
-	sin_size = sizeof their_addr;
-	int clientSocket = accept(network->serverSocket,
-			(struct sockaddr *) &their_addr, &sin_size);
-	if (clientSocket == -1) {
-		if (errno != EWOULDBLOCK) {
-			perror("accept");
-		} else {
-			// nobody tries to connect
-		}
-	} else {
-		inet_ntop(their_addr.ss_family,
-				get_in_addr((struct sockaddr *) &their_addr), s, sizeof s);
-		fcntl(clientSocket, F_SETFL, O_NONBLOCK);
-		printf("server: got connection from %s\n", s);
-
-		network->clientSocket = clientSocket;
-		network->isClientConnected = 1;
-
-		mc_nw_send_client_welcome(network);
-		mc_nw_send_client_message(network, "\n> ");
-	}
-}
-int mc_nw_setup_server(struct m_network *network) {
-	struct addrinfo hints;
-	struct addrinfo *servinfo;
-	struct addrinfo *p;
-	struct sigaction sa;
-	int addrinfo;
-	int yes = 1;
-
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE; // use my IP
-
-	if ((addrinfo = getaddrinfo(NULL, network->port, &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(addrinfo));
-		return 1;
-	}
-
-	// loop through all the results and bind to the first we can
-	for (p = servinfo; p != NULL; p = p->ai_next) {
-		if ((network->serverSocket = socket(p->ai_family, p->ai_socktype,
-				p->ai_protocol)) == -1) {
-			perror("server: socket");
-			continue;
-		}
-
-		if (setsockopt(network->serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes,
-				sizeof(int)) == -1) {
-			perror("setsockopt");
-			freeaddrinfo(servinfo); // all done with this structure
-			return 2;
-		}
-
-		fcntl(network->serverSocket, F_SETFL, O_NONBLOCK);
-
-		if (bind(network->serverSocket, p->ai_addr, p->ai_addrlen) == -1) {
-			close(network->serverSocket);
-			perror("server: bind");
-			continue;
-		}
-
-		break;
-	}
-
-	freeaddrinfo(servinfo); // all done with this structure
-
-	if (p == NULL) {
-		fprintf(stderr, "server: failed to bind\n");
-		return 3;
-	}
-
-	if (listen(network->serverSocket, 1) == -1) { // 1 connection max
-		perror("listen");
-		return 4;
-	}
-
-	sa.sa_handler = sigchld_handler; // reap all dead processes
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-		perror("sigaction");
-		return 5;
-	}
-
-	printf("server: waiting for connections on port %s\n", network->port);
-
-	return 0;
-}
-
-void sigchld_handler(int s) {
-	while (waitpid(-1, NULL, WNOHANG) > 0)
-		;
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa) {
-	if (sa->sa_family == AF_INET) {
-		return &(((struct sockaddr_in*) sa)->sin_addr);
-	}
-
-	return &(((struct sockaddr_in6*) sa)->sin6_addr);
 }
 
 // business stuff
