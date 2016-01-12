@@ -15,6 +15,15 @@
 #include "ssp_helpers.h"
 #include "SSPComs.h"
 
+#include <hiredis/hiredis.h>
+#include <hiredis/async.h>
+#include <hiredis/adapters/libevent.h>
+
+redisAsyncContext *db;
+struct event sspPollEvent;
+struct event myPollEvent;
+struct event_base *eventBase;
+
 struct m_credit {
 	unsigned long amount;
 };
@@ -70,7 +79,98 @@ static const char ROUTE_CASHBOX = 0x01;
 static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
+void cleanup(void) {
+	if(db) {
+		redisAsyncFree(db);
+		db = NULL;
+	}
+	// sspCleanup(); // TODO: sspCleanup()
+}
+
+void terminate(void) {
+	evtimer_del(&sspPollEvent);
+	if(db) {
+		redisAsyncCommand(db, NULL, NULL, "SET component:ssp 0");
+		redisAsyncDisconnect(db);
+		db = NULL;
+	}
+}
+
+void interrupt(int signal) {
+	terminate();
+}
+
+void setupDatabase(void) {
+	db = redisAsyncConnect("127.0.0.1", 6379);
+
+	if(db == NULL || db->err) {
+		if(db) {
+			fprintf(stderr, "fatal: Connection error: %s\n", db->errstr);
+		} else {
+			fprintf(stderr, "fatal: Connection error: can't allocate redis context\n");
+		}
+		exit(1);
+	}
+}
+
+void myPollEventFunction(int fd, short event, void *arg) {
+	printf("myPollEventFunction: Hello!\n");
+}
+
+void connectCallback(const redisAsyncContext *c, int status) {
+	if (status != REDIS_OK) {
+		fprintf(stderr, "Database error: %s\n", c->errstr);
+		return;
+	}
+	fprintf(stderr, "Connected to database...\n");
+
+	// setup poll timer for validator
+//	struct timeval time;
+//	time.tv_sec = 0;
+//	time.tv_usec = 500000;
+
+//	event_set(&sspPollEvent, 0, EV_PERSIST, sspPoll, NULL);
+//	event_base_set(eventBase, &sspPollEvent);
+//	evtimer_add(&sspPollEvent, &time);
+
+	// setup timer for hello world event (print hello world every 3 seconds more or less)
+	struct timeval timeHello;
+	timeHello.tv_sec = 3;
+	timeHello.tv_usec = 0;
+
+	event_set(&myPollEvent, 0, EV_PERSIST, myPollEventFunction, NULL);
+	event_base_set(eventBase, &myPollEvent);
+	evtimer_add(&myPollEvent, &timeHello);
+
+	redisAsyncCommand(db, NULL, NULL, "SET component:ssp 1");
+}
+
+void disconnectCallback(const redisAsyncContext *c, int status) {
+	if (status != REDIS_OK) {
+		fprintf(stderr, "Database error: %s\n", c->errstr);
+		return;
+	}
+	fprintf(stderr, "Disconnected from database\n");
+}
+
+void testRedis() {
+	printf("testRedis: entered\n");
+
+	eventBase = event_base_new();
+	atexit(cleanup);
+	setupDatabase();
+
+	redisLibeventAttach(db, eventBase);
+	redisAsyncSetConnectCallback(db, connectCallback);
+	redisAsyncSetDisconnectCallback(db, disconnectCallback);
+
+	printf("testRedis: waiting forever at event_base_dispatch\n");
+	event_base_dispatch(eventBase);
+}
+
 int main(int argc, char *argv[]) {
+	testRedis(); // will never return
+
 	struct m_metacash metacash;
 	metacash.quit = 0;
 	metacash.credit.amount = 0;
