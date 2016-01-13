@@ -20,6 +20,8 @@
 #include <hiredis/adapters/libevent.h>
 
 redisAsyncContext *db;
+redisAsyncContext *pubSub;
+
 struct event sspPollEvent;
 struct event myPollEvent;
 struct event_base *eventBase;
@@ -105,9 +107,22 @@ void setupDatabase(void) {
 
 	if(db == NULL || db->err) {
 		if(db) {
-			fprintf(stderr, "fatal: Connection error: %s\n", db->errstr);
+			fprintf(stderr, "db fatal: Connection error: %s\n", db->errstr);
 		} else {
-			fprintf(stderr, "fatal: Connection error: can't allocate redis context\n");
+			fprintf(stderr, "db fatal: Connection error: can't allocate redis context\n");
+		}
+		exit(1);
+	}
+}
+
+void setupPubSub(void) {
+	pubSub = redisAsyncConnect("127.0.0.1", 6379);
+
+	if(pubSub == NULL || pubSub->err) {
+		if(pubSub) {
+			fprintf(stderr, "pubSub fatal: Connection error: %s\n", pubSub->errstr);
+		} else {
+			fprintf(stderr, "pubSub fatal: Connection error: can't allocate redis context\n");
 		}
 		exit(1);
 	}
@@ -119,6 +134,7 @@ void myPollEventFunction(int fd, short event, void *arg) {
 
 void onMessageInTestTopicFunction(redisAsyncContext *c, void *foo, void *bar) {
 	printf("onMessageInTestTopicFunction: received a message in test-topic\n");
+	redisAsyncCommand(db, NULL, NULL, "INCR test-msg-counter");
 }
 
 void connectCallback(const redisAsyncContext *c, int status) {
@@ -138,8 +154,6 @@ void connectCallback(const redisAsyncContext *c, int status) {
 //	evtimer_add(&sspPollEvent, &time);
 
 	redisAsyncCommand(db, NULL, NULL, "SET component:ssp 1");
-
-	redisAsyncCommand(db, onMessageInTestTopicFunction, NULL, "SUBSCRIBE test-topic");
 }
 
 void disconnectCallback(const redisAsyncContext *c, int status) {
@@ -150,16 +164,39 @@ void disconnectCallback(const redisAsyncContext *c, int status) {
 	fprintf(stderr, "Disconnected from database\n");
 }
 
+void pubSubConnectCallback(const redisAsyncContext *c, int status) {
+	if (status != REDIS_OK) {
+		fprintf(stderr, "PubSub - Database error: %s\n", c->errstr);
+		return;
+	}
+	fprintf(stderr, "PubSub - Connected to database...\n");
+
+	redisAsyncCommand(pubSub, onMessageInTestTopicFunction, NULL, "SUBSCRIBE test-topic");
+}
+
+void pubSubDisconnectCallback(const redisAsyncContext *c, int status) {
+	if (status != REDIS_OK) {
+		fprintf(stderr, "PubSub - Database error: %s\n", c->errstr);
+		return;
+	}
+	fprintf(stderr, "PubSub - Disconnected from database\n");
+}
+
 void testRedis() {
 	printf("testRedis: entered\n");
 
 	eventBase = event_base_new();
 	atexit(cleanup);
-	setupDatabase();
 
+	setupDatabase();
 	redisLibeventAttach(db, eventBase);
 	redisAsyncSetConnectCallback(db, connectCallback);
 	redisAsyncSetDisconnectCallback(db, disconnectCallback);
+
+	setupPubSub();
+	redisLibeventAttach(pubSub, eventBase);
+	redisAsyncSetConnectCallback(pubSub, pubSubConnectCallback);
+	redisAsyncSetDisconnectCallback(pubSub, pubSubDisconnectCallback);
 
 	// setup timer for hello world event (print hello world every 3 seconds more or less)
 	struct timeval timeHello;
