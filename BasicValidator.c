@@ -19,6 +19,8 @@
 #include <hiredis/async.h>
 #include <hiredis/adapters/libevent.h>
 
+#include <syslog.h>
+
 struct m_credit {
 	unsigned long amount;
 };
@@ -172,6 +174,13 @@ void cbDisconnectPubSub(const redisAsyncContext *c, int status) {
 }
 
 int main(int argc, char *argv[]) {
+	setlogmask(LOG_UPTO (LOG_NOTICE));
+
+	openlog("metacashd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+
+	syslog(LOG_NOTICE, "Program started by User %d", getuid());
+	syslog(LOG_INFO, "A tree falls in a forest");
+
 	struct m_metacash metacash;
 	metacash.quit = 0;
 	metacash.credit.amount = 0;
@@ -194,9 +203,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	printf("redis connection: %s:%d\n", metacash.redisHost, metacash.redisPort);
-	printf("hw serial device: %s\n\n", metacash.serialDevice);
-	fflush(stdout);
+	syslog(LOG_NOTICE, "using redis at %s:%d and hardware device %s",
+			metacash.redisHost, metacash.redisPort, metacash.serialDevice);
 
 	// open the serial device
 	if (mc_ssp_open_serial_device(&metacash)) {
@@ -211,6 +219,8 @@ int main(int argc, char *argv[]) {
 	event_base_dispatch(metacash.eventBase); // TODO: will return if broken via libevent_breakloop
 
 	mc_ssp_close_serial_device(&metacash);
+
+	closelog ();
 
 	return 0;
 }
