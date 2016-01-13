@@ -19,13 +19,6 @@
 #include <hiredis/async.h>
 #include <hiredis/adapters/libevent.h>
 
-redisAsyncContext *db;
-redisAsyncContext *pubSub;
-
-struct event sspPollEvent;
-struct event myPollEvent;
-struct event_base *eventBase;
-
 struct m_credit {
 	unsigned long amount;
 };
@@ -46,6 +39,15 @@ struct m_device {
 struct m_metacash {
 	int quit;
 	char *serialDevice;
+
+	int redisPort;
+	char *redisHost;
+	redisAsyncContext *db;		// redis context used for persistence
+	redisAsyncContext *pubSub;	// redis context used for messaging (publish / subscribe)
+
+	struct event_base *eventBase;	// libevent
+	struct event evPoll; 			// event for periodically polling the cash hardware
+	struct event evCheckQuit;		// event for periodically checking to quit
 
 	struct m_credit credit;
 
@@ -81,82 +83,67 @@ static const char ROUTE_CASHBOX = 0x01;
 static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
-void cleanup(void) {
-	if(db) {
-		redisAsyncFree(db);
-		db = NULL;
-	}
-	// sspCleanup(); // TODO: sspCleanup()
-}
-
-void terminate(void) {
-	evtimer_del(&sspPollEvent);
-	if(db) {
-		redisAsyncCommand(db, NULL, NULL, "SET component:ssp 0");
-		redisAsyncDisconnect(db);
-		db = NULL;
-	}
-}
+int receivedSignal = 0;
 
 void interrupt(int signal) {
-	terminate();
+	receivedSignal = signal;
 }
 
-void setupDatabase(void) {
-	db = redisAsyncConnect("127.0.0.1", 6379);
+redisAsyncContext* mc_connect_redis(struct m_metacash *metacash) {
+	redisAsyncContext *conn = redisAsyncConnect(metacash->redisHost, metacash->redisPort);
 
-	if(db == NULL || db->err) {
-		if(db) {
-			fprintf(stderr, "db fatal: Connection error: %s\n", db->errstr);
+	if(conn == NULL || conn->err) {
+		if(conn) {
+			fprintf(stderr, "fatal: Connection error: %s\n", conn->errstr);
 		} else {
-			fprintf(stderr, "db fatal: Connection error: can't allocate redis context\n");
+			fprintf(stderr, "fatal: Connection error: can't allocate redis context\n");
 		}
-		exit(1);
+	} else {
+		// reference the metcash struct in data for use in connect/disconnect callback
+		conn->data = metacash;
+	}
+
+	return conn;
+}
+
+void cbPollEvent(int fd, short event, void *privdata) {
+	struct m_metacash *metacash = privdata;
+
+	// cash hardware
+	unsigned long amountBeforePoll = metacash->credit.amount;
+
+	mc_ssp_poll_device(&metacash->hopper, metacash);
+	mc_ssp_poll_device(&metacash->validator, metacash);
+
+	if (metacash->credit.amount != amountBeforePoll) {
+		printf("current credit now: %ld cents\n", metacash->credit.amount);
+		// TODO: publish new amount of credit
 	}
 }
 
-void setupPubSub(void) {
-	pubSub = redisAsyncConnect("127.0.0.1", 6379);
-
-	if(pubSub == NULL || pubSub->err) {
-		if(pubSub) {
-			fprintf(stderr, "pubSub fatal: Connection error: %s\n", pubSub->errstr);
-		} else {
-			fprintf(stderr, "pubSub fatal: Connection error: can't allocate redis context\n");
-		}
-		exit(1);
-	}
+void cbCheckQuit(int fd, short event, void *privdata) {
+	// TODO: check quit flag for occured signal
 }
 
-void myPollEventFunction(int fd, short event, void *arg) {
-	printf("myPollEventFunction: Hello!\n");
+void cbOnTestTopicMessage(redisAsyncContext *c, void *reply, void *privdata) {
+	printf("onMessageInTestTopicFunction: received a message via test-topic\n");
+
+	struct m_metacash *m = c->data;
+	redisAsyncCommand(m->db, NULL, NULL, "INCR test-msg-counter");
 }
 
-void onMessageInTestTopicFunction(redisAsyncContext *c, void *foo, void *bar) {
-	printf("onMessageInTestTopicFunction: received a message in test-topic\n");
-	redisAsyncCommand(db, NULL, NULL, "INCR test-msg-counter");
-}
-
-void connectCallback(const redisAsyncContext *c, int status) {
+void cbConnectDb(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "Database error: %s\n", c->errstr);
 		return;
 	}
 	fprintf(stderr, "Connected to database...\n");
 
-	// setup poll timer for validator
-//	struct timeval time;
-//	time.tv_sec = 0;
-//	time.tv_usec = 500000;
-
-//	event_set(&sspPollEvent, 0, EV_PERSIST, sspPoll, NULL);
-//	event_base_set(eventBase, &sspPollEvent);
-//	evtimer_add(&sspPollEvent, &time);
-
-	redisAsyncCommand(db, NULL, NULL, "SET component:ssp 1");
+	// redisCommand(c->c, "GET credit"); // TODO: read the current credit sync and store in metacash
+	// redisAsyncCommand(db, NULL, NULL, "SET component:ssp 1");
 }
 
-void disconnectCallback(const redisAsyncContext *c, int status) {
+void cbDisconnectDb(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "Database error: %s\n", c->errstr);
 		return;
@@ -164,17 +151,19 @@ void disconnectCallback(const redisAsyncContext *c, int status) {
 	fprintf(stderr, "Disconnected from database\n");
 }
 
-void pubSubConnectCallback(const redisAsyncContext *c, int status) {
+void cbConnectPubSub(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "PubSub - Database error: %s\n", c->errstr);
 		return;
 	}
 	fprintf(stderr, "PubSub - Connected to database...\n");
 
-	redisAsyncCommand(pubSub, onMessageInTestTopicFunction, NULL, "SUBSCRIBE test-topic");
+	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier 'const' warning
+
+	redisAsyncCommand(cNotConst, cbOnTestTopicMessage, NULL, "SUBSCRIBE test-topic");
 }
 
-void pubSubDisconnectCallback(const redisAsyncContext *c, int status) {
+void cbDisconnectPubSub(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "PubSub - Database error: %s\n", c->errstr);
 		return;
@@ -182,42 +171,13 @@ void pubSubDisconnectCallback(const redisAsyncContext *c, int status) {
 	fprintf(stderr, "PubSub - Disconnected from database\n");
 }
 
-void testRedis() {
-	printf("testRedis: entered\n");
-
-	eventBase = event_base_new();
-	atexit(cleanup);
-
-	setupDatabase();
-	redisLibeventAttach(db, eventBase);
-	redisAsyncSetConnectCallback(db, connectCallback);
-	redisAsyncSetDisconnectCallback(db, disconnectCallback);
-
-	setupPubSub();
-	redisLibeventAttach(pubSub, eventBase);
-	redisAsyncSetConnectCallback(pubSub, pubSubConnectCallback);
-	redisAsyncSetDisconnectCallback(pubSub, pubSubDisconnectCallback);
-
-	// setup timer for hello world event (print hello world every 3 seconds more or less)
-	struct timeval timeHello;
-	timeHello.tv_sec = 3;
-	timeHello.tv_usec = 0;
-
-	event_set(&myPollEvent, 0, EV_PERSIST, myPollEventFunction, NULL);
-	event_base_set(eventBase, &myPollEvent);
-	evtimer_add(&myPollEvent, &timeHello);
-
-	printf("testRedis: waiting forever at event_base_dispatch\n");
-	event_base_dispatch(eventBase);
-}
-
 int main(int argc, char *argv[]) {
-	testRedis(); // will never return
-
 	struct m_metacash metacash;
 	metacash.quit = 0;
 	metacash.credit.amount = 0;
-	metacash.serialDevice = "/dev/ttyACM0";
+	metacash.serialDevice = "/dev/ttyACM0";	// default, override with -d argument
+	metacash.redisHost = "127.0.0.1";		// default, override with -h argument
+	metacash.redisPort = 6379;				// default, override with -p argument
 
 	metacash.hopper.id = 0x10; // 0X10 -> Smart Hopper ("Münzer")
 	metacash.hopper.name = "Mr. Coin";
@@ -234,6 +194,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	printf("redis connection: %s:%d\n", metacash.redisHost, metacash.redisPort);
+	printf("hw serial device: %s\n\n", metacash.serialDevice);
+	fflush(stdout);
+
 	// open the serial device
 	if (mc_ssp_open_serial_device(&metacash)) {
 		return 1;
@@ -244,17 +208,7 @@ int main(int argc, char *argv[]) {
 
 	printf("metacash open for business :D\n\n");
 
-	while (metacash.quit == 0) {
-		// cash hardware
-		unsigned long amount = metacash.credit.amount;
-
-		mc_ssp_poll_device(&metacash.hopper, &metacash);
-		mc_ssp_poll_device(&metacash.validator, &metacash);
-
-		if (metacash.credit.amount != amount) {
-			printf("current credit now: %ld cents\n", metacash.credit.amount);
-		}
-	}
+	event_base_dispatch(metacash.eventBase); // TODO: will return if broken via libevent_breakloop
 
 	mc_ssp_close_serial_device(&metacash);
 
@@ -265,16 +219,19 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	char c;
-	while ((c = getopt(argc, argv, "p:d:")) != -1)
+	while ((c = getopt(argc, argv, "h:p:d:")) != -1)
 		switch (c) {
+		case 'h':
+			metacash->redisHost = optarg;
+			break;
+		case 'p':
+			metacash->redisPort = atoi(optarg);
+			break;
 		case 'd':
 			metacash->serialDevice = optarg;
 			break;
-		case 'p':
-			// TODO: port cmd argument unused for now
-			break;
 		case '?':
-			if (optopt == 'c' || optopt == 'p')
+			if (optopt == 'h' || optopt == 'p' || optopt == 'd')
 				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
 			else if (isprint(optopt))
 				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -522,6 +479,24 @@ void mc_handle_events_validator(struct m_device *device,
 }
 
 void mc_setup(struct m_metacash *metacash) {
+	// initialize libEvent
+	metacash->eventBase = event_base_new();
+
+	// connect to redis
+	metacash->db = mc_connect_redis(metacash);		// establish connection for persistence
+	metacash->pubSub = mc_connect_redis(metacash);	// establich connection for pub/sub
+
+	// setup redis
+	if(metacash->db && metacash->pubSub) {
+		redisLibeventAttach(metacash->db, metacash->eventBase);
+		redisAsyncSetConnectCallback(metacash->db, cbConnectDb);
+		redisAsyncSetDisconnectCallback(metacash->db, cbDisconnectDb);
+
+		redisLibeventAttach(metacash->pubSub, metacash->eventBase);
+		redisAsyncSetConnectCallback(metacash->pubSub, cbConnectPubSub);
+		redisAsyncSetDisconnectCallback(metacash->pubSub, cbDisconnectPubSub);
+	}
+
 	// prepare the device structures
 	mc_ssp_setup_command(&metacash->validator.sspC, metacash->validator.id);
 	mc_ssp_setup_command(&metacash->hopper.sspC, metacash->hopper.id);
@@ -542,6 +517,28 @@ void mc_setup(struct m_metacash *metacash) {
 	ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_CASHBOX); // 100 euro
 	ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_CASHBOX); // 200 euro
 	ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_CASHBOX); // 500 euro
+
+	// setup libevent triggered polling of the hardware (every second more or less)
+	{
+		struct timeval interval;
+		interval.tv_sec = 1;
+		interval.tv_usec = 0;
+
+		event_set(&metacash->evPoll, 0, EV_PERSIST, cbPollEvent, &metacash); // provide metacash in privdata
+		event_base_set(metacash->eventBase, &metacash->evPoll);
+		evtimer_add(&metacash->evPoll, &interval);
+	}
+
+	// setup libevent triggered check if we should quit (every 200ms more or less)
+	{
+		struct timeval interval;
+		interval.tv_sec = 0;
+		interval.tv_usec = 200;
+
+		event_set(&metacash->evCheckQuit, 0, EV_PERSIST, cbCheckQuit, &metacash); // provide metacash in privdata
+		event_base_set(metacash->eventBase, &metacash->evCheckQuit);
+		evtimer_add(&metacash->evCheckQuit, &interval);
+	}
 }
 
 int mc_ssp_open_serial_device(struct m_metacash *metacash) {
@@ -594,7 +591,7 @@ void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash) {
 			return;
 		} else {
 			if (resp == SSP_RESPONSE_KEY_NOT_SET) {
-				// The validator has responded with key not set, so we should try to negotiate one
+				// The unit has responded with key not set, so we should try to negotiate one
 				if (ssp6_setup_encryption(&device->sspC, device->key)
 						!= SSP_RESPONSE_OK) {
 					printf("Encryption Failed\n");
@@ -614,8 +611,6 @@ void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash) {
 			//printf("polling '%s' returned no events\n", device->name);
 		}
 	}
-
-	usleep(200000); // 200 ms delay between polls
 }
 
 void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key) {
