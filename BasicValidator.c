@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -40,6 +41,7 @@ struct m_device {
 
 struct m_metacash {
 	int quit;
+	int deviceAvailable;
 	char *serialDevice;
 
 	int redisPort;
@@ -110,6 +112,10 @@ redisAsyncContext* mc_connect_redis(struct m_metacash *metacash) {
 
 void cbPollEvent(int fd, short event, void *privdata) {
 	struct m_metacash *metacash = privdata;
+	if(metacash->deviceAvailable == 0) {
+		// return immediately if we have no actual hardware to poll
+		return;
+	}
 
 	// cash hardware
 	unsigned long amountBeforePoll = metacash->credit.amount;
@@ -124,7 +130,13 @@ void cbPollEvent(int fd, short event, void *privdata) {
 }
 
 void cbCheckQuit(int fd, short event, void *privdata) {
-	// TODO: check quit flag for occured signal
+	if(receivedSignal != 0) {
+		syslog(LOG_NOTICE, "received signal. going to exit event loop.");
+
+		struct m_metacash *metacash = privdata;
+		event_base_loopexit(metacash->eventBase, NULL);
+		receivedSignal = 0;
+	}
 }
 
 void cbOnTestTopicMessage(redisAsyncContext *c, void *reply, void *privdata) {
@@ -174,14 +186,17 @@ void cbDisconnectPubSub(const redisAsyncContext *c, int status) {
 }
 
 int main(int argc, char *argv[]) {
+	// setup logging via syslog
 	setlogmask(LOG_UPTO (LOG_NOTICE));
-
 	openlog("metacashd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-
 	syslog(LOG_NOTICE, "Program started by User %d", getuid());
-	syslog(LOG_INFO, "A tree falls in a forest");
+
+	// register interrupt handler for signals
+	signal(SIGTERM, interrupt);
+	signal(SIGINT, interrupt);
 
 	struct m_metacash metacash;
+	metacash.deviceAvailable = 0;
 	metacash.quit = 0;
 	metacash.credit.amount = 0;
 	metacash.serialDevice = "/dev/ttyACM0";	// default, override with -d argument
@@ -207,20 +222,26 @@ int main(int argc, char *argv[]) {
 			metacash.redisHost, metacash.redisPort, metacash.serialDevice);
 
 	// open the serial device
-	if (mc_ssp_open_serial_device(&metacash)) {
-		return 1;
+	if (mc_ssp_open_serial_device(&metacash) == 0) {
+		metacash.deviceAvailable = 1;
+	} else {
+		syslog(LOG_ALERT, "cash hardware unavailable");
 	}
 
 	// setup the ssp commands, configure and initialize the hardware
 	mc_setup(&metacash);
 
-	printf("metacash open for business :D\n\n");
+	syslog(LOG_NOTICE, "metacash open for business :D");
 
-	event_base_dispatch(metacash.eventBase); // TODO: will return if broken via libevent_breakloop
+	event_base_dispatch(metacash.eventBase); // blocking until exited via api-call
 
-	mc_ssp_close_serial_device(&metacash);
+	syslog(LOG_NOTICE, "exiting");
 
-	closelog ();
+	if(metacash.deviceAvailable) {
+		mc_ssp_close_serial_device(&metacash);
+	}
+
+	closelog();
 
 	return 0;
 }
@@ -507,26 +528,29 @@ void mc_setup(struct m_metacash *metacash) {
 		redisAsyncSetDisconnectCallback(metacash->pubSub, cbDisconnectPubSub);
 	}
 
-	// prepare the device structures
-	mc_ssp_setup_command(&metacash->validator.sspC, metacash->validator.id);
-	mc_ssp_setup_command(&metacash->hopper.sspC, metacash->hopper.id);
+	// try to initialize the hardware only if we successfully have opened the device
+	if(metacash->deviceAvailable) {
+		// prepare the device structures
+		mc_ssp_setup_command(&metacash->validator.sspC, metacash->validator.id);
+		mc_ssp_setup_command(&metacash->hopper.sspC, metacash->hopper.id);
 
-	// initialize the devices
-	printf("\n");
-	mc_ssp_initialize_device(&metacash->validator.sspC,
-			metacash->validator.key);
-	printf("\n");
-	mc_ssp_initialize_device(&metacash->hopper.sspC, metacash->hopper.key);
-	printf("\n");
+		// initialize the devices
+		printf("\n");
+		mc_ssp_initialize_device(&metacash->validator.sspC,
+				metacash->validator.key);
+		printf("\n");
+		mc_ssp_initialize_device(&metacash->hopper.sspC, metacash->hopper.key);
+		printf("\n");
 
-	// setup the routing of the banknotes in the validator (amounts are in cent)
-	ssp6_set_route(&metacash->validator.sspC, 500, CURRENCY, ROUTE_STORAGE); // 5 euro
-	ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY, ROUTE_STORAGE); // 10 euro
-	ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY, ROUTE_STORAGE); // 20 euro
-	ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY, ROUTE_CASHBOX); // 50 euro
-	ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_CASHBOX); // 100 euro
-	ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_CASHBOX); // 200 euro
-	ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_CASHBOX); // 500 euro
+		// setup the routing of the banknotes in the validator (amounts are in cent)
+		ssp6_set_route(&metacash->validator.sspC, 500, CURRENCY, ROUTE_STORAGE); // 5 euro
+		ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY, ROUTE_STORAGE); // 10 euro
+		ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY, ROUTE_STORAGE); // 20 euro
+		ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY, ROUTE_CASHBOX); // 50 euro
+		ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_CASHBOX); // 100 euro
+		ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_CASHBOX); // 200 euro
+		ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_CASHBOX); // 500 euro
+	}
 
 	// setup libevent triggered polling of the hardware (every second more or less)
 	{
@@ -534,7 +558,7 @@ void mc_setup(struct m_metacash *metacash) {
 		interval.tv_sec = 1;
 		interval.tv_usec = 0;
 
-		event_set(&metacash->evPoll, 0, EV_PERSIST, cbPollEvent, &metacash); // provide metacash in privdata
+		event_set(&metacash->evPoll, 0, EV_PERSIST, cbPollEvent, metacash); // provide metacash in privdata
 		event_base_set(metacash->eventBase, &metacash->evPoll);
 		evtimer_add(&metacash->evPoll, &interval);
 	}
@@ -545,7 +569,7 @@ void mc_setup(struct m_metacash *metacash) {
 		interval.tv_sec = 0;
 		interval.tv_usec = 200;
 
-		event_set(&metacash->evCheckQuit, 0, EV_PERSIST, cbCheckQuit, &metacash); // provide metacash in privdata
+		event_set(&metacash->evCheckQuit, 0, EV_PERSIST, cbCheckQuit, metacash); // provide metacash in privdata
 		event_base_set(metacash->eventBase, &metacash->evCheckQuit);
 		evtimer_add(&metacash->evCheckQuit, &interval);
 	}
