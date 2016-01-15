@@ -140,10 +140,46 @@ void cbCheckQuit(int fd, short event, void *privdata) {
 }
 
 void cbOnTestTopicMessage(redisAsyncContext *c, void *reply, void *privdata) {
-	printf("onMessageInTestTopicFunction: received a message via test-topic\n");
+	printf("cbOnTestTopicMessage: received a message via test-topic\n");
 
 	struct m_metacash *m = c->data;
 	redisAsyncCommand(m->db, NULL, NULL, "INCR test-msg-counter");
+}
+
+void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
+	if(r == NULL) return;
+
+	struct m_metacash *m = c->data;
+	redisReply *reply = r;
+
+	// example from http://stackoverflow.com/questions/16213676/hiredis-waiting-for-message
+    if(reply->type == REDIS_REPLY_ARRAY && reply->elements == 3) {
+    	if(strcmp(reply->element[0]->str, "subscribe") != 0) {
+    		char *topic = reply->element[1]->str;
+    		char *message = reply->element[2]->str;
+
+    		struct m_device *device = NULL;
+
+    		if(strstr(message, "'dev':'validator'")) {
+    			device = &m->validator;
+    		} else if(strstr(message, "'dev':'hopper'")) {
+    			device = &m->hopper;
+    		} else {
+    			printf("cbOnMetacashMessage: message missing device '%s'", message);
+    			return;
+    		}
+
+            if(strstr(message, "'cmd':'empty'")) {
+            	mc_ssp_empty(&device->sspC);
+            } else if(strstr(message, "'cmd':'enable'")) {
+            	ssp6_enable(&device->sspC);
+            } else if(strstr(message, "cmd':'disable'")) {
+            	ssp6_disable(&device->sspC);
+            } else {
+            	printf("cbOnMetacashMessage: message missing cmd '%s'", message);
+            }
+    	}
+    }
 }
 
 void cbConnectDb(const redisAsyncContext *c, int status) {
@@ -175,6 +211,7 @@ void cbConnectPubSub(const redisAsyncContext *c, int status) {
 	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier 'const' warning
 
 	redisAsyncCommand(cNotConst, cbOnTestTopicMessage, NULL, "SUBSCRIBE test-topic");
+	redisAsyncCommand(cNotConst, cbOnMetacashMessage, NULL, "SUBSCRIBE metacash");
 }
 
 void cbDisconnectPubSub(const redisAsyncContext *c, int status) {
@@ -377,6 +414,14 @@ void mc_handle_events_validator(struct m_device *device,
 				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'reading'}");
 			}
 			break;
+		case SSP_POLL_EMPTY:
+			printf("Empty");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'empty'}");
+			break;
+		case SSP_POLL_EMPTYING:
+			printf("Emptying");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'emptying'}");
+			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
 			printf("Credit %ld %s\n", poll->events[i].data1, poll->events[i].cc);
@@ -495,6 +540,10 @@ void mc_handle_events_validator(struct m_device *device,
 				ssp6_run_calibration(&device->sspC);
 				break;
 			}
+			break;
+		default:
+			printf ("Unknown event: event=0x%02X\n", poll->events[i].event);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'unknown','id':'0x%02X'}", poll->events[i].event);
 			break;
 		}
 	}
