@@ -821,6 +821,49 @@ void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc) {
 	}
 }
 
+SSP_RESPONSE_ENUM mc_ssp_last_reject_code(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = 0x17;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	switch (sspC->ResponseData[1]) {
+		case 0x00: // Note accepted
+		case 0x01: // Note length incorrect
+		case 0x02: // Reject reason 2
+		case 0x03: // Reject reason 3
+		case 0x04: // Reject reason 4
+		case 0x05: // Reject reason 5
+		case 0x06: // Channel inhibited
+		case 0x07: // Second note inserted
+		case 0x08: // Reject reason 8
+		case 0x09: // Note recognised in more than one channel
+		case 0x0A: // Reject reason 10
+		case 0x0B: // Note too long
+		case 0x0C: // Reject reason 12
+		case 0x0D: // Mechanism slow/stalled
+		case 0x0E: // Strimming attempt detected
+		case 0x0F: // Fraud channel reject
+		case 0x10: // No notes inserted
+		case 0x11: // Peak detect fail
+		case 0x12: // Twisted note detected
+		case 0x13: // Escrow time-out
+		case 0x14: // Bar code scan fail
+		case 0x15: // Rear sensor 2 fail
+		case 0x16: // Slot fail 1
+		case 0x17: // Slot fail 2
+		case 0x18: // Lens over-sample
+		case 0x19: // Width detect fail
+		case 0x1A: // Short note detected
+		case 0x1B: // Note payout
+		case 0x1C: // Unable to stack note
+		default: //
+	}
+}
+
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = 0x3;
