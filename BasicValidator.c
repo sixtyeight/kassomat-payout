@@ -860,8 +860,11 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_code(SSP_COMMAND *sspC) {
 		case 0x1A: // Short note detected
 		case 0x1B: // Note payout
 		case 0x1C: // Unable to stack note
-		default: //
+		default: // foo
+			break;
 	}
+
+	return 0;
 }
 
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
