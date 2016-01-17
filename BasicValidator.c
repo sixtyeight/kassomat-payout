@@ -71,6 +71,7 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile);
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -173,8 +174,124 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
             	mc_ssp_empty(&device->sspC);
             } else if(strstr(message, "'cmd':'enable'")) {
             	ssp6_enable(&device->sspC);
-            } else if(strstr(message, "cmd':'disable'")) {
+            } else if(strstr(message, "'cmd':'disable'")) {
             	ssp6_disable(&device->sspC);
+            } else if(strstr(message, "'cmd':'last reject note'")) {
+            	printf("handling 'last reject note'\n");
+
+            	redisAsyncContext *db = m->db;
+            	unsigned char reasonCode;
+            	char *reason = NULL;
+
+            	if(mc_ssp_last_reject_note(&device->sspC, &reasonCode) == SSP_RESPONSE_OK) {
+                	switch (reasonCode) {
+                		case 0x00: // Note accepted
+                			reason = "note accepted";
+                			break;
+                		case 0x01: // Note length incorrect
+                			reason = "note length incorrect";
+                			break;
+                		case 0x02: // Reject reason 2
+                			reason = "undisclosed (reject reason 2)";
+                			break;
+                		case 0x03: // Reject reason 3
+                			reason = "undisclosed (reject reason 3)";
+                			break;
+                		case 0x04: // Reject reason 4
+                			reason = "undisclosed (reject reason 4)";
+                			break;
+                		case 0x05: // Reject reason 5
+                			reason = "undisclosed (reject reason 5)";
+                			break;
+                		case 0x06: // Channel inhibited
+                			reason = "channel inhibited";
+                			break;
+                		case 0x07: // Second note inserted
+                			reason = "second note inserted";
+                			break;
+                		case 0x08: // Reject reason 8
+                			reason = "undisclosed (reject reason 8)";
+                			break;
+                		case 0x09: // Note recognised in more than one channel
+                			reason = "note recognised in more than one channel";
+                			break;
+                		case 0x0A: // Reject reason 10
+                			reason = "undisclosed (reject reason 10)";
+                			break;
+                		case 0x0B: // Note too long
+                			reason = "note too long";
+                			break;
+                		case 0x0C: // Reject reason 12
+                			reason = "undisclosed (reject reason 12)";
+                			break;
+                		case 0x0D: // Mechanism slow/stalled
+                			reason = "mechanism slow/stalled";
+                			break;
+                		case 0x0E: // Strimming attempt detected
+                			reason = "strimming attempt detected";
+                			break;
+                		case 0x0F: // Fraud channel reject
+                			reason = "fraud channel reject";
+                			break;
+                		case 0x10: // No notes inserted
+                			reason = "no notes inserted";
+                			break;
+                		case 0x11: // Peak detect fail
+                			reason = "peak detect fail";
+                			break;
+                		case 0x12: // Twisted note detected
+                			reason = "twisted note detected";
+                			break;
+                		case 0x13: // Escrow time-out
+                			reason = "escrow time-out";
+                			break;
+                		case 0x14: // Bar code scan fail
+                			reason = "bar code scan fail";
+                			break;
+                		case 0x15: // Rear sensor 2 fail
+                			reason = "rear sensor 2 fail";
+                			break;
+                		case 0x16: // Slot fail 1
+                			reason = "slot fail 1";
+                			break;
+                		case 0x17: // Slot fail 2
+                			reason = "slot fail 2";
+                			break;
+                		case 0x18: // Lens over-sample
+                			reason = "lens over-sample";
+                			break;
+                		case 0x19: // Width detect fail
+                			reason = "width detect fail";
+                			break;
+                		case 0x1A: // Short note detected
+                			reason = "short note detected";
+                			break;
+                		case 0x1B: // Note payout
+                			reason = "note payout";
+                			break;
+                		case 0x1C: // Unable to stack note
+                			reason = "unable to stack note";
+                			break;
+                		default: // not defined in API doc
+                			break;
+                	}
+                	if(reason != NULL) {
+                		printf("reason found: %s\n", reason);
+                		char *response = NULL;
+                		asprintf(&response, "{'response':'last reject note','reason':'%s',code:%ld}", reason, reasonCode);
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", response);
+            			free(response);
+                	} else {
+                		printf("reason undefined\n");
+                		char *response = NULL;
+                		asprintf(&response, "{'response':'last reject note','reason':'undefined',code:%ld}", reasonCode);
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", response);
+            			free(response);
+                	}
+            	} else {
+            		printf("reason timeout\n");
+        			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'timeout':'last reject note'}");
+            	}
             } else {
             	printf("cbOnMetacashMessage: message missing cmd '%s'", message);
             }
@@ -821,7 +938,7 @@ void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc) {
 	}
 }
 
-SSP_RESPONSE_ENUM mc_ssp_last_reject_code(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = 0x17;
 
@@ -830,41 +947,9 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_code(SSP_COMMAND *sspC) {
 		return SSP_RESPONSE_TIMEOUT;
 	}
 
-	switch (sspC->ResponseData[1]) {
-		case 0x00: // Note accepted
-		case 0x01: // Note length incorrect
-		case 0x02: // Reject reason 2
-		case 0x03: // Reject reason 3
-		case 0x04: // Reject reason 4
-		case 0x05: // Reject reason 5
-		case 0x06: // Channel inhibited
-		case 0x07: // Second note inserted
-		case 0x08: // Reject reason 8
-		case 0x09: // Note recognised in more than one channel
-		case 0x0A: // Reject reason 10
-		case 0x0B: // Note too long
-		case 0x0C: // Reject reason 12
-		case 0x0D: // Mechanism slow/stalled
-		case 0x0E: // Strimming attempt detected
-		case 0x0F: // Fraud channel reject
-		case 0x10: // No notes inserted
-		case 0x11: // Peak detect fail
-		case 0x12: // Twisted note detected
-		case 0x13: // Escrow time-out
-		case 0x14: // Bar code scan fail
-		case 0x15: // Rear sensor 2 fail
-		case 0x16: // Slot fail 1
-		case 0x17: // Slot fail 2
-		case 0x18: // Lens over-sample
-		case 0x19: // Width detect fail
-		case 0x1A: // Short note detected
-		case 0x1B: // Note payout
-		case 0x1C: // Unable to stack note
-		default: // foo
-			break;
-	}
+	*reason = sspC->ResponseData[1];
 
-	return 0;
+	return SSP_RESPONSE_OK;
 }
 
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
