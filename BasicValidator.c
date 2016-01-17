@@ -947,9 +947,12 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reas
 		return SSP_RESPONSE_TIMEOUT;
 	}
 
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
 	*reason = sspC->ResponseData[1];
 
-	return SSP_RESPONSE_OK;
+	return resp;
 }
 
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
