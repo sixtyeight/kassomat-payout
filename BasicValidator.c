@@ -469,7 +469,7 @@ void mc_handle_events_hopper(struct m_device *device,
 			break;
 		case SSP_POLL_COIN_CREDIT:
 			metacash->credit.amount++; // hopper will report all coins as 1 cent m(
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'coin credit'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'coin credit'}");
 			break;
 		case SSP_POLL_EMPTY:
 			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'empty'}");
@@ -574,9 +574,8 @@ void mc_handle_events_validator(struct m_device *device,
 			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'credit','channel':%ld,'cc':'%s'}",
-					poll->events[i].data1,
-					poll->events[i].cc);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'credit','channel':%ld}",
+					poll->events[i].data1);
 			break;
 		case SSP_POLL_INCOMPLETE_PAYOUT:
 			// the validator shutdown during a payout, this event is reporting that some value remains to payout
