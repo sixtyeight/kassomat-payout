@@ -141,13 +141,6 @@ void cbCheckQuit(int fd, short event, void *privdata) {
 	}
 }
 
-void cbOnTestTopicMessage(redisAsyncContext *c, void *reply, void *privdata) {
-	printf("cbOnTestTopicMessage: received a message via test-topic\n");
-
-	struct m_metacash *m = c->data;
-	redisAsyncCommand(m->db, NULL, NULL, "INCR test-msg-counter");
-}
-
 void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
 	if(r == NULL) return;
 
@@ -388,7 +381,6 @@ void cbConnectPubSub(const redisAsyncContext *c, int status) {
 
 	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier 'const' warning
 
-	redisAsyncCommand(cNotConst, cbOnTestTopicMessage, NULL, "SUBSCRIBE test-topic");
 	redisAsyncCommand(cNotConst, cbOnMetacashMessage, NULL, "SUBSCRIBE metacash");
 }
 
