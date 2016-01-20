@@ -230,6 +230,8 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
                 			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'unknown'}");
                 			break;
             			}
+            		} else {
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','result':'ok'}");
             		}
             	}
             } else if(strstr(message, "'cmd':'last reject note'")) {
