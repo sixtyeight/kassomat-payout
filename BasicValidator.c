@@ -72,6 +72,7 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason);
+SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -160,12 +161,14 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
     		char *message = reply->element[2]->str;
 
     		struct m_device *device = NULL;
+        	redisAsyncContext *db = m->db;
 
     		if(strstr(message, "'dev':'validator'")) {
     			device = &m->validator;
     		} else if(strstr(message, "'dev':'hopper'")) {
     			device = &m->hopper;
     		} else {
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'error':'missing device in message'}");
     			printf("cbOnMetacashMessage: message missing device '%s'", message);
     			return;
     		}
@@ -176,10 +179,67 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
             	ssp6_enable(&device->sspC);
             } else if(strstr(message, "'cmd':'disable'")) {
             	ssp6_disable(&device->sspC);
-            } else if(strstr(message, "'cmd':'last reject note'")) {
-            	printf("handling 'last reject note'\n");
+            } else if(strstr(message, "'cmd':'payout'")) {
+            	char *amountToken = "'amount':'";
+            	char *amountStart = strstr(message, amountToken);
+            	if(amountStart != NULL) {
+                	amountStart = amountStart + strlen(amountToken);
+            		int amount = atoi(amountStart);
 
-            	redisAsyncContext *db = m->db;
+            		if (ssp6_payout(&device->sspC, amount, "EUR", SSP6_OPTION_BYTE_DO)
+            				!= SSP_RESPONSE_OK) {
+            			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+                    	redisAsyncContext *db = m->db;
+            			switch (device->sspC.ResponseData[1]) {
+            			case 0x01:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'not enough value in smart payout'}");
+            				break;
+            			case 0x02:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'can\'t pay exact amount'}");
+            				break;
+            			case 0x03:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'smart payout busy'}");
+            				break;
+            			case 0x04:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'smart payout disabled'}");
+            				break;
+            			default:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'unknown'}");
+                			break;
+            			}
+            		}
+            	}
+            } else if(strstr(message, "'cmd':'test'")) {
+            	char *amountToken = "'amount':'";
+            	char *amountStart = strstr(message, amountToken);
+            	if(amountStart != NULL) {
+                	amountStart = amountStart + strlen(amountToken);
+            		int amount = atoi(amountStart);
+
+            		if (ssp6_payout(&device->sspC, amount, "EUR", SSP6_OPTION_BYTE_TEST)
+            				!= SSP_RESPONSE_OK) {
+            			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+                    	redisAsyncContext *db = m->db;
+            			switch (device->sspC.ResponseData[1]) {
+            			case 0x01:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'not enough value in smart payout'}");
+            				break;
+            			case 0x02:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'can\'t pay exact amount'}");
+            				break;
+            			case 0x03:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'smart payout busy'}");
+            				break;
+            			case 0x04:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'smart payout disabled'}");
+            				break;
+            			default:
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'unknown'}");
+                			break;
+            			}
+            		}
+            	}
+            } else if(strstr(message, "'cmd':'last reject note'")) {
             	unsigned char reasonCode;
             	char *reason = NULL;
 
@@ -293,6 +353,7 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
         			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'timeout':'last reject note'}");
             	}
             } else {
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'error':'unable to process message'}");
             	printf("cbOnMetacashMessage: message missing cmd '%s'", message);
             }
     	}
@@ -720,14 +781,21 @@ void mc_setup(struct m_metacash *metacash) {
 		mc_ssp_initialize_device(&metacash->hopper.sspC, metacash->hopper.key);
 		printf("\n");
 
+		// reject notes unfit for storage.
+		// if this is not enabled, notes unfit for storage will be silently redirected
+		// to the cashbox of the validator from which no payout can be done.
+		if(mc_ssp_set_refill_mode(&metacash->validator.sspC) != SSP_RESPONSE_OK) {
+			printf("ERROR: setting refill mode failed\n");
+		}
+
 		// setup the routing of the banknotes in the validator (amounts are in cent)
 		ssp6_set_route(&metacash->validator.sspC, 500, CURRENCY, ROUTE_CASHBOX); // 5 euro
 		ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY, ROUTE_CASHBOX); // 10 euro
-		ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY, ROUTE_CASHBOX); // 20 euro
-		ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY, ROUTE_CASHBOX); // 50 euro
-		ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_CASHBOX); // 100 euro
-		ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_CASHBOX); // 200 euro
-		ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_CASHBOX); // 500 euro
+		ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY, ROUTE_STORAGE); // 20 euro
+		ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY, ROUTE_STORAGE); // 50 euro
+		ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_STORAGE); // 100 euro
+		ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_STORAGE); // 200 euro
+		ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_STORAGE); // 500 euro
 	}
 
 	// setup libevent triggered polling of the hardware (every second more or less)
@@ -996,6 +1064,32 @@ SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = 0x4;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	// no data to parse
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 9;
+	sspC->CommandData[0] = 0x30;
+
+	sspC->CommandData[1] = 0x05;
+	sspC->CommandData[2] = 0x81;
+	sspC->CommandData[3] = 0x10;
+	sspC->CommandData[4] = 0x11;
+	sspC->CommandData[5] = 0x01;
+	sspC->CommandData[6] = 0x01;
+	sspC->CommandData[7] = 0x52;
+	sspC->CommandData[8] = 0xF5;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
