@@ -11,13 +11,18 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+// lowlevel library provided by the cash hardware vendor
+// innovative technologies (http://innovative-technology.com).
+// ssp manual available at http://innovative-technology.com/images/pdocuments/manuals/SSP_Manual.pdf
 #include "port_linux.h"
 #include "ssp_defines.h"
 #include "ssp_helpers.h"
 #include "SSPComs.h"
 
+// c client for redis
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
+// adding libevent adapter for hiredis async
 #include <hiredis/adapters/libevent.h>
 
 #include <syslog.h>
@@ -55,8 +60,8 @@ struct m_metacash {
 
 	struct m_credit credit;
 
-	struct m_device hopper;
-	struct m_device validator;
+	struct m_device hopper;			// smart hopper device
+	struct m_device validator;		// nv200 + smart payout devices
 };
 
 // mc_ssp_* : metacash ssp functions (cash hardware, low level)
@@ -120,15 +125,15 @@ void cbPollEvent(int fd, short event, void *privdata) {
 	}
 
 	// cash hardware
-	unsigned long amountBeforePoll = metacash->credit.amount;
+	// unsigned long amountBeforePoll = metacash->credit.amount;
 
 	mc_ssp_poll_device(&metacash->hopper, metacash);
 	mc_ssp_poll_device(&metacash->validator, metacash);
 
-	if (metacash->credit.amount != amountBeforePoll) {
-		printf("current credit now: %ld cents\n", metacash->credit.amount);
-		// TODO: publish new amount of credit
-	}
+//	if (metacash->credit.amount != amountBeforePoll) {
+// printf("current credit now: %ld cents\n", metacash->credit.amount);
+// TODO: publish new amount of credit
+//	}
 }
 
 void cbCheckQuit(int fd, short event, void *privdata) {
@@ -142,6 +147,10 @@ void cbCheckQuit(int fd, short event, void *privdata) {
 }
 
 void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
+	// empty for now
+}
+
+void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 	if(r == NULL) return;
 
 	struct m_metacash *m = c->data;
@@ -151,20 +160,21 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
     if(reply->type == REDIS_REPLY_ARRAY && reply->elements == 3) {
     	if(strcmp(reply->element[0]->str, "subscribe") != 0) {
     		char *topic = reply->element[1]->str;
-    		char *message = reply->element[2]->str;
-
     		struct m_device *device = NULL;
-        	redisAsyncContext *db = m->db;
 
-    		if(strstr(message, "'dev':'validator'")) {
+    		char *response_topic = NULL;
+    		if(strcmp(topic, "validator-request") == 0) {
     			device = &m->validator;
-    		} else if(strstr(message, "'dev':'hopper'")) {
+    			response_topic = "validator-response";
+    		} else if(strcmp(topic, "hopper-request") == 0) {
     			device = &m->hopper;
+    			response_topic = "hopper-response";
     		} else {
-    			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'error':'missing device in message'}");
-    			printf("cbOnMetacashMessage: message missing device '%s'", message);
     			return;
     		}
+
+    		char *message = reply->element[2]->str;
+        	redisAsyncContext *db = m->db;
 
             if(strstr(message, "'cmd':'empty'")) {
             	mc_ssp_empty(&device->sspC);
@@ -185,19 +195,19 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
                     	redisAsyncContext *db = m->db;
             			switch (device->sspC.ResponseData[1]) {
             			case 0x01:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'not enough value in smart payout'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'not enough value in smart payout'}");
             				break;
             			case 0x02:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'can\'t pay exact amount'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'can\'t pay exact amount'}");
             				break;
             			case 0x03:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'smart payout busy'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'smart payout busy'}");
             				break;
             			case 0x04:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'smart payout disabled'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'smart payout disabled'}");
             				break;
             			default:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'payout','error':'unknown'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'unknown'}");
                 			break;
             			}
             		}
@@ -215,23 +225,23 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
                     	redisAsyncContext *db = m->db;
             			switch (device->sspC.ResponseData[1]) {
             			case 0x01:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'not enough value in smart payout'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'not enough value in smart payout'}");
             				break;
             			case 0x02:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'can\'t pay exact amount'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'can\'t pay exact amount'}");
             				break;
             			case 0x03:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'smart payout busy'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'smart payout busy'}");
             				break;
             			case 0x04:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'smart payout disabled'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'smart payout disabled'}");
             				break;
             			default:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','error':'unknown'}");
+                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'unknown'}");
                 			break;
             			}
             		} else {
-            			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'response':'test','result':'ok'}");
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','result':'ok'}");
             		}
             	}
             } else if(strstr(message, "'cmd':'last reject note'")) {
@@ -334,21 +344,21 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
                 		printf("reason found: %s\n", reason);
                 		char *response = NULL;
                 		asprintf(&response, "{'response':'last reject note','reason':'%s',code:%ld}", reason, reasonCode);
-            			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", response);
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
             			free(response);
                 	} else {
                 		printf("reason undefined\n");
                 		char *response = NULL;
                 		asprintf(&response, "{'response':'last reject note','reason':'undefined',code:%ld}", reasonCode);
-            			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", response);
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
             			free(response);
                 	}
             	} else {
             		printf("reason timeout\n");
-        			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'timeout':'last reject note'}");
+        			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'timeout':'last reject note'}");
             	}
             } else {
-    			redisAsyncCommand(db, NULL, NULL, "PUBLISH response %s", "{'error':'unable to process message'}");
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", "{'error':'unable to process message'}");
             	printf("cbOnMetacashMessage: message missing cmd '%s'", message);
             }
     	}
@@ -384,6 +394,8 @@ void cbConnectPubSub(const redisAsyncContext *c, int status) {
 	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier 'const' warning
 
 	redisAsyncCommand(cNotConst, cbOnMetacashMessage, NULL, "SUBSCRIBE metacash");
+	redisAsyncCommand(cNotConst, cbOnRequestMessage, NULL, "SUBSCRIBE validator-request");
+	redisAsyncCommand(cNotConst, cbOnRequestMessage, NULL, "SUBSCRIBE hopper-request");
 }
 
 void cbDisconnectPubSub(const redisAsyncContext *c, int status) {
@@ -495,7 +507,7 @@ void mc_handle_events_hopper(struct m_device *device,
 	for (i = 0; i < poll->event_count; ++i) {
 		switch(poll->events[i].event) {
 		case SSP_POLL_RESET:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'unit reset'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'unit reset'}");
 			// Make sure we are using ssp version 6
 			if(ssp6_host_protocol(&device->sspC, 0x06) != SSP_RESPONSE_OK) {
 				fprintf(stderr, "SSP Host Protocol Failed\n");
@@ -505,36 +517,36 @@ void mc_handle_events_hopper(struct m_device *device,
 		case SSP_POLL_READ:
 			// the 'read' event contains 1 data value, which if >0 means a note has been validated and is in escrow
 			if(poll->events[i].data1 > 0) {
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'read','channel':%ld}",
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'read','channel':%ld}",
 						poll->events[i].data1);
 			} else {
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'reading'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'reading'}");
 			}
 			break;
 		case SSP_POLL_DISPENSING:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'dispensing','channel':%ld}",
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'dispensing','channel':%ld}",
 					poll->events[i].data1);
 			break;
 		case SSP_POLL_DISPENSED:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'dispensed','channel':%ld}",
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'dispensed','channel':%ld}",
 					poll->events[i].data1);
 			break;
 		case SSP_POLL_JAMMED:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'jammed'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'jammed'}");
 			break;
 		case SSP_POLL_COIN_CREDIT:
 			metacash->credit.amount++; // hopper will report all coins as 1 cent m(
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'coin credit'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'coin credit'}");
 			break;
 		case SSP_POLL_EMPTY:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'empty'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'empty'}");
 			break;
 		case SSP_POLL_EMPTYING:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'emptying'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'emptying'}");
 			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'credit','channel':%ld,'cc':'%s'}",
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'credit','channel':%ld,'cc':'%s'}",
 					poll->events[i].data1,
 					poll->events[i].cc);
 			break;
@@ -544,7 +556,7 @@ void mc_handle_events_hopper(struct m_device *device,
 				poll->events[i].data1,
 				poll->events[i].data2,
 				poll->events[i].cc);
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", response);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", response);
 			free(response);
 			break;
 		case SSP_POLL_INCOMPLETE_FLOAT:
@@ -553,45 +565,45 @@ void mc_handle_events_hopper(struct m_device *device,
 				poll->events[i].data1,
 				poll->events[i].data2,
 				poll->events[i].cc);
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", response);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", response);
 			free(response);
 			break;
 		case SSP_POLL_DISABLED:
 			// The unit has been disabled
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'disabled'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'disabled'}");
 			break;
 		case SSP_POLL_CALIBRATION_FAIL:
 			// the hopper calibration has failed. An extra byte is available with an error code.
 			switch(poll->events[i].data1) {
 			case NO_FAILUE:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'no error'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'no error'}");
 				break;
 			case SENSOR_FLAP:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'sensor flap'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'sensor flap'}");
 				break;
 			case SENSOR_EXIT:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'sensor exit'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'sensor exit'}");
 				break;
 			case SENSOR_COIL1:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'sensor coil 1'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'sensor coil 1'}");
 				break;
 			case SENSOR_COIL2:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'sensor coil 2'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'sensor coil 2'}");
 				break;
 			case NOT_INITIALISED:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'not initialized'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'not initialized'}");
 				break;
 			case CHECKSUM_ERROR:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper %s", "{'event':'calibration fail','error':'checksum error'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'calibration fail','error':'checksum error'}");
 				break;
 			case COMMAND_RECAL:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'recalibrating'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'recalibrating'}");
 				ssp6_run_calibration(&device->sspC);
 				break;
 			}
 			break;
 		default:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper {'event':'unknown','id':'0x%02X'}", poll->events[i].event);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'unknown','id':'0x%02X'}", poll->events[i].event);
 			break;
 		}
 	}
@@ -605,7 +617,7 @@ void mc_handle_events_validator(struct m_device *device,
 	for(int i = 0; i < poll->event_count; ++i) {
 		switch(poll->events[i].event) {
 		case SSP_POLL_RESET:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'unit reset'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'unit reset'}");
 			// Make sure we are using ssp version 6
 			if(ssp6_host_protocol(&device->sspC, 0x06) != SSP_RESPONSE_OK) {
 				fprintf(stderr, "SSP Host Protocol Failed\n");
@@ -615,21 +627,21 @@ void mc_handle_events_validator(struct m_device *device,
 		case SSP_POLL_READ:
 			// the 'read' event contains 1 data value, which if >0 means a note has been validated and is in escrow
 			if(poll->events[i].data1 > 0) {
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'read','channel':%ld}",
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'read','channel':%ld}",
 						poll->events[i].data1);
 			} else {
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'reading'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'reading'}");
 			}
 			break;
 		case SSP_POLL_EMPTY:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'empty'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'empty'}");
 			break;
 		case SSP_POLL_EMPTYING:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'emptying'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'emptying'}");
 			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'credit','channel':%ld}",
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'credit','channel':%ld}",
 					poll->events[i].data1);
 			break;
 		case SSP_POLL_INCOMPLETE_PAYOUT:
@@ -638,7 +650,7 @@ void mc_handle_events_validator(struct m_device *device,
 				poll->events[i].data1,
 				poll->events[i].data2,
 				poll->events[i].cc);
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", response);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", response);
 			free(response);
 			break;
 		case SSP_POLL_INCOMPLETE_FLOAT:
@@ -647,96 +659,96 @@ void mc_handle_events_validator(struct m_device *device,
 				poll->events[i].data1,
 				poll->events[i].data2,
 				poll->events[i].cc);
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", response);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", response);
 			free(response);
 			break;
 		case SSP_POLL_REJECTING:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'rejecting'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'rejecting'}");
 			break;
 		case SSP_POLL_REJECTED:
 			// The note was rejected
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'rejected'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'rejected'}");
 			break;
 		case SSP_POLL_STACKING:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'stacking'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'stacking'}");
 			break;
 		case SSP_POLL_STORED:
 			// The note has been stored in the payout unit
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'stored'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'stored'}");
 			break;
 		case SSP_POLL_STACKED:
 			// The note has been stacked in the cashbox
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'stacked'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'stacked'}");
 			break;
 		case SSP_POLL_SAFE_JAM:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'safe jam'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'safe jam'}");
 			break;
 		case SSP_POLL_UNSAFE_JAM:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'unsafe jam'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'unsafe jam'}");
 			break;
 		case SSP_POLL_DISABLED:
 			// The validator has been disabled
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'disabled'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'disabled'}");
 			break;
 		case SSP_POLL_FRAUD_ATTEMPT:
 			// The validator has detected a fraud attempt
     		asprintf(&response, "{'event':'fraud attempt','dispensed':%ld}",
 				poll->events[i].data1);
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", response);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", response);
 			free(response);
 			break;
 		case SSP_POLL_STACKER_FULL:
 			// The cashbox is full
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'stacker full'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'stacker full'}");
 			break;
 		case SSP_POLL_CASH_BOX_REMOVED:
 			// The cashbox has been removed
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'cashbox removed'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'cashbox removed'}");
 			break;
 		case SSP_POLL_CASH_BOX_REPLACED:
 			// The cashbox has been replaced
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'cashbox replaced'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'cashbox replaced'}");
 			break;
 		case SSP_POLL_CLEARED_FROM_FRONT:
 			// A note was in the notepath at startup and has been cleared from the front of the validator
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'cleared from front'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'cleared from front'}");
 			break;
 		case SSP_POLL_CLEARED_INTO_CASHBOX:
 			// A note was in the notepath at startup and has been cleared into the cashbox
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'cleared into cashbox'}");
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'cleared into cashbox'}");
 			break;
 		case SSP_POLL_CALIBRATION_FAIL:
 			// the hopper calibration has failed. An extra byte is available with an error code.
 			switch(poll->events[i].data1) {
 			case NO_FAILUE:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'no error'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'no error'}");
 				break;
 			case SENSOR_FLAP:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'sensor flap'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'sensor flap'}");
 				break;
 			case SENSOR_EXIT:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'sensor exit'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'sensor exit'}");
 				break;
 			case SENSOR_COIL1:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'sensor coil 1'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'sensor coil 1'}");
 				break;
 			case SENSOR_COIL2:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'sensor coil 2'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'sensor coil 2'}");
 				break;
 			case NOT_INITIALISED:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'not initialized'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'not initialized'}");
 				break;
 			case CHECKSUM_ERROR:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator %s", "{'event':'calibration fail','error':'checksum error'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event %s", "{'event':'calibration fail','error':'checksum error'}");
 				break;
 			case COMMAND_RECAL:
-				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'recalibrating'}");
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'recalibrating'}");
 				ssp6_run_calibration(&device->sspC);
 				break;
 			}
 			break;
 		default:
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator {'event':'unknown','id':'0x%02X'}", poll->events[i].event);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'unknown','id':'0x%02X'}", poll->events[i].event);
 			break;
 		}
 	}
