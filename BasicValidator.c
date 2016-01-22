@@ -68,7 +68,7 @@ struct m_metacash {
 int mc_ssp_open_serial_device(struct m_metacash *metacash);
 void mc_ssp_close_serial_device(struct m_metacash *metacash);
 void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId);
-void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key);
+void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key, struct m_device *device);
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc);
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
@@ -793,26 +793,55 @@ void mc_setup(struct m_metacash *metacash) {
 		// initialize the devices
 		printf("\n");
 		mc_ssp_initialize_device(&metacash->validator.sspC,
-				metacash->validator.key);
+				metacash->validator.key, &metacash->validator);
 		printf("\n");
-		mc_ssp_initialize_device(&metacash->hopper.sspC, metacash->hopper.key);
+		mc_ssp_initialize_device(&metacash->hopper.sspC, metacash->hopper.key,
+				&metacash->hopper);
 		printf("\n");
 
-		// reject notes unfit for storage.
-		// if this is not enabled, notes unfit for storage will be silently redirected
-		// to the cashbox of the validator from which no payout can be done.
-		if(mc_ssp_set_refill_mode(&metacash->validator.sspC) != SSP_RESPONSE_OK) {
-			printf("ERROR: setting refill mode failed\n");
+		{
+			// SMART Hopper configuration
+			int i;
+			for (i = 0; i < metacash->hopper.setup_req.NumberOfChannels; i++) {
+				ssp6_set_coinmech_inhibits(&metacash->hopper.sspC,
+						metacash->hopper.setup_req.ChannelData[i].value,
+						metacash->hopper.setup_req.ChannelData[i].cc, ENABLED);
+			}
 		}
 
-		// setup the routing of the banknotes in the validator (amounts are in cent)
-		ssp6_set_route(&metacash->validator.sspC, 500, CURRENCY, ROUTE_CASHBOX); // 5 euro
-		ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY, ROUTE_CASHBOX); // 10 euro
-		ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY, ROUTE_STORAGE); // 20 euro
-		ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY, ROUTE_STORAGE); // 50 euro
-		ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_STORAGE); // 100 euro
-		ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_STORAGE); // 200 euro
-		ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_STORAGE); // 500 euro
+		{
+			// SMART Payout configuration
+
+			// reject notes unfit for storage.
+			// if this is not enabled, notes unfit for storage will be silently redirected
+			// to the cashbox of the validator from which no payout can be done.
+			if(mc_ssp_set_refill_mode(&metacash->validator.sspC) != SSP_RESPONSE_OK) {
+				printf("ERROR: setting refill mode failed\n");
+			}
+
+			// setup the routing of the banknotes in the validator (amounts are in cent)
+			ssp6_set_route(&metacash->validator.sspC, 500, CURRENCY, ROUTE_CASHBOX); // 5 euro
+			ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY, ROUTE_CASHBOX); // 10 euro
+			ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY, ROUTE_STORAGE); // 20 euro
+			ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY, ROUTE_STORAGE); // 50 euro
+			ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY, ROUTE_STORAGE); // 100 euro
+			ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY, ROUTE_STORAGE); // 200 euro
+			ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY, ROUTE_STORAGE); // 500 euro
+
+
+			// set the inhibits (enable all note acceptance)
+			if (ssp6_set_inhibits(&metacash->validator.sspC, 0xFF, 0xFF) != SSP_RESPONSE_OK) {
+				printf("ERROR: Inhibits Failed\n");
+				return;
+			}
+
+			//enable the payout unit
+			if (ssp6_enable_payout(&metacash->validator.sspC, metacash->validator.setup_req.UnitType)
+					!= SSP_RESPONSE_OK) {
+				printf("ERROR: Enable Failed\n");
+				return;
+			}
+		}
 	}
 
 	// setup libevent triggered polling of the hardware (every second more or less)
@@ -910,8 +939,8 @@ void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash) {
 	}
 }
 
-void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key) {
-	SSP6_SETUP_REQUEST_DATA setup_req;
+void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key, struct m_device *device) {
+	SSP6_SETUP_REQUEST_DATA *setup_req = &device->setup_req;
 	unsigned int i = 0;
 
 	printf("initializing device (id=0x%02X)\n", sspC->SSPAddress);
@@ -938,45 +967,22 @@ void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key) {
 	printf("host protocol verified\n");
 
 	// Collect some information about the device
-	if (ssp6_setup_request(sspC, &setup_req) != SSP_RESPONSE_OK) {
+	if (ssp6_setup_request(sspC, setup_req) != SSP_RESPONSE_OK) {
 		printf("ERROR: Setup Request Failed\n");
 		return;
 	}
 
-	printf("firmware: %s\n", setup_req.FirmwareVersion);
+	printf("firmware: %s\n", setup_req->FirmwareVersion);
 	printf("channels:\n");
-	for (i = 0; i < setup_req.NumberOfChannels; i++) {
-		printf("channel %d: %d %s\n", i + 1, setup_req.ChannelData[i].value,
-				setup_req.ChannelData[i].cc);
+	for (i = 0; i < setup_req->NumberOfChannels; i++) {
+		printf("channel %d: %d %s\n", i + 1, setup_req->ChannelData[i].value,
+				setup_req->ChannelData[i].cc);
 	}
 
 	//enable the device
 	if (ssp6_enable(sspC) != SSP_RESPONSE_OK) {
 		printf("ERROR: Enable Failed\n");
 		return;
-	}
-
-	if (setup_req.UnitType == 0x03) {
-		// SMART Hopper requires different inhibit commands
-		for (i = 0; i < setup_req.NumberOfChannels; i++) {
-			ssp6_set_coinmech_inhibits(sspC, setup_req.ChannelData[i].value,
-					setup_req.ChannelData[i].cc, ENABLED);
-		}
-	} else {
-		if (setup_req.UnitType == 0x06 || setup_req.UnitType == 0x07) {
-			//enable the payout unit
-			if (ssp6_enable_payout(sspC, setup_req.UnitType)
-					!= SSP_RESPONSE_OK) {
-				printf("ERROR: Enable Failed\n");
-				return;
-			}
-		}
-
-		// set the inhibits (enable all note acceptance)
-		if (ssp6_set_inhibits(sspC, 0xFF, 0xFF) != SSP_RESPONSE_OK) {
-			printf("ERROR: Inhibits Failed\n");
-			return;
-		}
 	}
 
 	printf("device has been successfully initialized\n");
