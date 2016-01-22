@@ -542,8 +542,12 @@ void mc_handle_events_hopper(struct m_device *device,
 			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'jammed'}");
 			break;
 		case SSP_POLL_COIN_CREDIT:
-			metacash->credit.amount++; // hopper will report all coins as 1 cent m(
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", "{'event':'coin credit'}");
+			// both data1 and cc contain garbage
+    		asprintf(&response, "{'event':'coin credit','amount':%ld,'cc':'%s'}",
+    				poll->events[i].data1,
+					poll->events[i].cc);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s", response);
+			free(response);
 			break;
 		case SSP_POLL_EMPTY:
 			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event {'event':'empty'}");
