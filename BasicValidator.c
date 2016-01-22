@@ -188,7 +188,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
                 	amountStart = amountStart + strlen(amountToken);
             		int amount = atoi(amountStart);
 
-            		if (ssp6_payout(&device->sspC, amount, "EUR", SSP6_OPTION_BYTE_DO)
+            		if (ssp6_payout(&device->sspC, amount, CURRENCY, SSP6_OPTION_BYTE_DO)
             				!= SSP_RESPONSE_OK) {
             			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
                     	redisAsyncContext *db = m->db;
@@ -218,7 +218,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
                 	amountStart = amountStart + strlen(amountToken);
             		int amount = atoi(amountStart);
 
-            		if (ssp6_payout(&device->sspC, amount, "EUR", SSP6_OPTION_BYTE_TEST)
+            		if (ssp6_payout(&device->sspC, amount, CURRENCY, SSP6_OPTION_BYTE_TEST)
             				!= SSP_RESPONSE_OK) {
             			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
                     	redisAsyncContext *db = m->db;
