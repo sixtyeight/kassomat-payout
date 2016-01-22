@@ -277,7 +277,22 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 				poll_response->events[poll_response->event_count].data1 =
 						sspC->ResponseData[i];
 				break;
-
+			case SSP_POLL_COIN_CREDIT:
+				{
+					int k;
+				for (k = 0; k < 4; ++k) {
+					i++; //move through the 4 bytes of data
+					poll_response->events[poll_response->event_count].data1 +=
+							(((unsigned long) sspC->ResponseData[i])
+									<< (8 * k)); // METALAB FIX: wrong index (was i)
+				}
+				for (k = 0; k < 3; ++k) { // METALAB FIX: k < 3 (was 4)
+					i++; //move through the 3 bytes of country code
+					poll_response->events[poll_response->event_count].cc[k] +=
+							sspC->ResponseData[i];
+				}
+				}
+				break;
 				//all these commands have 7 data bytes per country;
 			case SSP_POLL_DISPENSING:
 			case SSP_POLL_DISPENSED:
@@ -287,7 +302,6 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 			case SSP_POLL_FLOATED:
 			case SSP_POLL_TIMEOUT:
 			case SSP_POLL_CASHBOX_PAID:
-			case SSP_POLL_COIN_CREDIT:
 			case SSP_POLL_SMART_EMPTYING:
 			case SSP_POLL_SMART_EMPTIED:
 			case SSP_POLL_FRAUD_ATTEMPT: {
