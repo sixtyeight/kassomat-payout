@@ -70,7 +70,6 @@ void mc_ssp_close_serial_device(struct m_metacash *metacash);
 void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId);
 void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key, struct m_device *device);
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
-void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc);
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile);
@@ -994,60 +993,6 @@ void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId) {
 	sspC->EncryptionStatus = NO_ENCRYPTION;
 	sspC->RetryLevel = 3;
 	sspC->BaudRate = 9600;
-}
-
-void mc_ssp_payout(SSP_COMMAND *sspC, int amount, char *cc) {
-	if (amount > 0) {
-		// send the test payout command
-		if (ssp6_payout(sspC, amount, cc, SSP6_OPTION_BYTE_TEST)
-				!= SSP_RESPONSE_OK) {
-
-			printf("Test: Payout would fail");
-			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-			switch (sspC->ResponseData[1]) {
-			case 0x01:
-				printf(": Not enough value in Smart Payout\n");
-				break;
-			case 0x02:
-				printf(": Cant pay exact amount\n");
-				break;
-			case 0x03:
-				printf(": Smart Payout Busy\n");
-				break;
-			case 0x04:
-				printf(": Smart Payout Disabled\n");
-				break;
-			default:
-				printf("\n");
-			}
-
-			return;
-		}
-
-		// send the payout command
-		if (ssp6_payout(sspC, amount, cc, SSP6_OPTION_BYTE_DO)
-				!= SSP_RESPONSE_OK) {
-
-			printf("ERROR: Payout failed");
-			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-			switch (sspC->ResponseData[1]) {
-			case 0x01:
-				printf(": Not enough value in Smart Payout\n");
-				break;
-			case 0x02:
-				printf(": Cant pay exact amount\n");
-				break;
-			case 0x03:
-				printf(": Smart Payout Busy\n");
-				break;
-			case 0x04:
-				printf(": Smart Payout Disabled\n");
-				break;
-			default:
-				printf("\n");
-			}
-		}
-	}
 }
 
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason) {
