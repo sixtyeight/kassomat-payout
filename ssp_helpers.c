@@ -309,13 +309,17 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 						i++; //move through the 4 bytes of data
 						poll_response->events[poll_response->event_count].data1 +=
 								(((unsigned long) sspC->ResponseData[i])
-										<< (8 * i));
+										<< (8 * k)); // METALAB FIX: wrong index (was i)
 					}
 					for (k = 0; k < 4; ++k) {
 						i++; //move through the 3 bytes of country code
 						poll_response->events[poll_response->event_count].cc[k] +=
 								sspC->ResponseData[i];
 					}
+
+					// METALAB FIX: fix terminator
+					poll_response->events[poll_response->event_count].cc[3] =
+							'\0';
 
 					if (j != countries - 1) // the last time through event_count will be updated elsewhere.
 						poll_response->event_count++;
