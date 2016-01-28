@@ -969,11 +969,11 @@ void mc_setup(struct m_metacash *metacash) {
 		evtimer_add(&metacash->evPoll, &interval);
 	}
 
-	// setup libevent triggered check if we should quit (every 200ms more or less)
+	// setup libevent triggered check if we should quit (every 500ms more or less)
 	{
 		struct timeval interval;
 		interval.tv_sec = 0;
-		interval.tv_usec = 200;
+		interval.tv_usec = 500000;
 
 		event_set(&metacash->evCheckQuit, 0, EV_PERSIST, cbCheckQuit, metacash); // provide metacash in privdata
 		event_base_set(metacash->eventBase, &metacash->evCheckQuit);
