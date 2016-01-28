@@ -50,15 +50,15 @@ struct m_metacash {
 
 	int redisPort;
 	char *redisHost;
-	redisAsyncContext *db;		// redis context used for persistence
-	redisAsyncContext *pubSub;// redis context used for messaging (publish / subscribe)
+	redisAsyncContext *db; // redis context used for persistence
+	redisAsyncContext *pubSub; // redis context used for messaging (publish / subscribe)
 
-	struct event_base *eventBase;	// libevent
-	struct event evPoll; 	// event for periodically polling the cash hardware
-	struct event evCheckQuit;		// event for periodically checking to quit
+	struct event_base *eventBase; // libevent
+	struct event evPoll; // event for periodically polling the cash hardware
+	struct event evCheckQuit; // event for periodically checking to quit
 
-	struct m_device hopper;			// smart hopper device
-	struct m_device validator;		// nv200 + smart payout devices
+	struct m_device hopper; // smart hopper device
+	struct m_device validator; // nv200 + smart payout devices
 };
 
 // mc_ssp_* : metacash ssp functions (cash hardware, low level)
@@ -875,8 +875,8 @@ void mc_setup(struct m_metacash *metacash) {
 	metacash->eventBase = event_base_new();
 
 	// connect to redis
-	metacash->db = mc_connect_redis(metacash);// establish connection for persistence
-	metacash->pubSub = mc_connect_redis(metacash);// establich connection for pub/sub
+	metacash->db = mc_connect_redis(metacash); // establish connection for persistence
+	metacash->pubSub = mc_connect_redis(metacash); // establich connection for pub/sub
 
 	// setup redis
 	if (metacash->db && metacash->pubSub) {
