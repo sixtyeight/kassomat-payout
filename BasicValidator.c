@@ -219,69 +219,56 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
             	ssp6_enable(&device->sspC);
             } else if(strstr(message, "'cmd':'disable'")) {
             	ssp6_disable(&device->sspC);
-            } else if(strstr(message, "'cmd':'payout'")) {
-            	char *amountToken = "'amount':'";
-            	char *amountStart = strstr(message, amountToken);
-            	if(amountStart != NULL) {
-                	amountStart = amountStart + strlen(amountToken);
-            		int amount = atoi(amountStart);
+            } else if(strstr(message, "'cmd':'test-payout'") || strstr(message, "'cmd':'do-payout'")) {
+            	int payoutOption = 0;
 
-            		if (ssp6_payout(&device->sspC, amount, CURRENCY, SSP6_OPTION_BYTE_DO)
-            				!= SSP_RESPONSE_OK) {
-            			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-                    	redisAsyncContext *db = m->db;
-            			switch (device->sspC.ResponseData[1]) {
-            			case 0x01:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'not enough value in smart payout'}");
-            				break;
-            			case 0x02:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'can\'t pay exact amount'}");
-            				break;
-            			case 0x03:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'smart payout busy'}");
-            				break;
-            			case 0x04:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'smart payout disabled'}");
-            				break;
-            			default:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'payout','error':'unknown'}");
-                			break;
-            			}
-            		}
+            	if(strstr(message, "'cmd':'do-payout'")) {
+            		payoutOption = SSP6_OPTION_BYTE_DO;
+            	} else {
+            		payoutOption = SSP6_OPTION_BYTE_TEST;
             	}
-            } else if(strstr(message, "'cmd':'test'")) {
+
             	char *amountToken = "'amount':'";
             	char *amountStart = strstr(message, amountToken);
             	if(amountStart != NULL) {
                 	amountStart = amountStart + strlen(amountToken);
             		int amount = atoi(amountStart);
 
-            		if (ssp6_payout(&device->sspC, amount, CURRENCY, SSP6_OPTION_BYTE_TEST)
+            		if (ssp6_payout(&device->sspC, amount, CURRENCY, payoutOption)
             				!= SSP_RESPONSE_OK) {
             			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
                     	redisAsyncContext *db = m->db;
+                    	char *error = NULL;
             			switch (device->sspC.ResponseData[1]) {
             			case 0x01:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'not enough value in smart payout'}");
+            				error = "not enough value in smart payout";
             				break;
             			case 0x02:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'can\'t pay exact amount'}");
+            				error = "can\'t pay exact amount";
             				break;
             			case 0x03:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'smart payout busy'}");
+            				error = "smart payout busy";
             				break;
             			case 0x04:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'smart payout disabled'}");
+            				error = "smart payout disabled";
             				break;
             			default:
-                			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','error':'unknown'}");
+            				error = "unknown";
                 			break;
             			}
+                		char *response = NULL;
+                		asprintf(&response, "{'correlId':'%s','error':'%s'}",
+                				msgId, error);
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
+            			free(response);
             		} else {
-            			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'response':'test','result':'ok'}");
+                		char *response = NULL;
+                		asprintf(&response, "{'correlId':'%s','result':'ok'}", msgId);
+            			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
+            			free(response);
             		}
             	}
-            } else if(strstr(message, "'cmd':'last reject note'")) {
+            } else if(strstr(message, "'cmd':'last-reject-note'")) {
             	unsigned char reasonCode;
             	char *reason = NULL;
 
