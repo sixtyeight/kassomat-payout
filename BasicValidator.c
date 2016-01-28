@@ -692,10 +692,12 @@ void mc_handle_events_validator(struct m_device *device,
 			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
-			unsigned long amount = device->setup_req.ChannelData[poll->events[i].data1 - 1].value * 100;
-			redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'credit','amount':%ld,'channel':%ld}",
-					amount,
-					poll->events[i].data1);
+			{
+				unsigned long amount = device->setup_req.ChannelData[poll->events[i].data1 - 1].value * 100;
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH validator-event {'event':'credit','amount':%ld,'channel':%ld}",
+						amount,
+						poll->events[i].data1);
+			}
 			break;
 		case SSP_POLL_INCOMPLETE_PAYOUT:
 			// the validator shutdown during a payout, this event is reporting that some value remains to payout
