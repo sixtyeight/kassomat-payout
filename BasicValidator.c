@@ -30,10 +30,6 @@
 // libuuid is used to generate msgIds for the responses
 #include <uuid/uuid.h>
 
-struct m_credit {
-	unsigned long amount;
-};
-
 struct m_metacash;
 
 struct m_device {
@@ -60,8 +56,6 @@ struct m_metacash {
 	struct event_base *eventBase;	// libevent
 	struct event evPoll; 			// event for periodically polling the cash hardware
 	struct event evCheckQuit;		// event for periodically checking to quit
-
-	struct m_credit credit;
 
 	struct m_device hopper;			// smart hopper device
 	struct m_device validator;		// nv200 + smart payout devices
@@ -126,16 +120,8 @@ void cbPollEvent(int fd, short event, void *privdata) {
 		return;
 	}
 
-	// cash hardware
-	// unsigned long amountBeforePoll = metacash->credit.amount;
-
 	mc_ssp_poll_device(&metacash->hopper, metacash);
 	mc_ssp_poll_device(&metacash->validator, metacash);
-
-//	if (metacash->credit.amount != amountBeforePoll) {
-// printf("current credit now: %ld cents\n", metacash->credit.amount);
-// TODO: publish new amount of credit
-//	}
 }
 
 void cbCheckQuit(int fd, short event, void *privdata) {
@@ -444,7 +430,7 @@ int main(int argc, char *argv[]) {
 	struct m_metacash metacash;
 	metacash.deviceAvailable = 0;
 	metacash.quit = 0;
-	metacash.credit.amount = 0;
+
 	metacash.serialDevice = "/dev/ttyACM0";	// default, override with -d argument
 	metacash.redisHost = "127.0.0.1";		// default, override with -h argument
 	metacash.redisPort = 6379;				// default, override with -p argument
