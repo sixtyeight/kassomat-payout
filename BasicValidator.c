@@ -27,6 +27,9 @@
 
 #include <syslog.h>
 
+// libuuid is used to generate msgIds for the responses
+#include <uuid/uuid.h>
+
 struct m_credit {
 	unsigned long amount;
 };
@@ -175,9 +178,44 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
     		char *message = reply->element[2]->str;
         	redisAsyncContext *db = m->db;
 
+        	const char *msgIdToken = "'msgId':'";
+    		char *msgIdStart = strstr(message, msgIdToken);
+    		if(msgIdStart == NULL) {
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'error':'msgId missing'}");
+    			return;
+    		}
+    		msgIdStart = msgIdStart + strlen(msgIdToken);
+    		char *msgIdEnd = strstr(msgIdStart, "'");
+    		if(msgIdEnd == NULL) {
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'error':'msgId not a string'}");
+    			return;
+    		}
+
+    		char *msgId = strndup(msgIdStart, (msgIdEnd - msgIdStart));
+
+            // generate a new msgId for the response
+            uuid_t uuid;
+            uuid_generate_time_safe(uuid);
+            char responseMsgId[37] = { 0 };      // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
+            uuid_unparse_lower(uuid, responseMsgId);
+
+            printf("responding with correlId='%s' and msgId='%s'\n", msgId, responseMsgId);
+
             if(strstr(message, "'cmd':'empty'")) {
+        		char *accepted = NULL;
+        		asprintf(&accepted, "{'msgId':'%s','correlId':'%s','accepted':'true'}",
+        				responseMsgId, msgId);
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, accepted);
+    			free(accepted);
+
             	mc_ssp_empty(&device->sspC);
             } else if(strstr(message, "'cmd':'enable'")) {
+        		char *accepted = NULL;
+        		asprintf(&accepted, "{'msgId':'%s','correlId':'%s','accepted':'true'}",
+        				responseMsgId, msgId);
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, accepted);
+    			free(accepted);
+
             	ssp6_enable(&device->sspC);
             } else if(strstr(message, "'cmd':'disable'")) {
             	ssp6_disable(&device->sspC);
@@ -340,26 +378,27 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
                 			break;
                 	}
                 	if(reason != NULL) {
-                		printf("reason found: %s\n", reason);
                 		char *response = NULL;
-                		asprintf(&response, "{'response':'last reject note','reason':'%s',code:%ld}", reason, reasonCode);
+                		asprintf(&response, "{'correlId':'%s','response':'last reject note','reason':'%s',code:%ld}",
+                				msgId, reason, reasonCode);
             			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
             			free(response);
                 	} else {
-                		printf("reason undefined\n");
                 		char *response = NULL;
-                		asprintf(&response, "{'response':'last reject note','reason':'undefined',code:%ld}", reasonCode);
+                		asprintf(&response, "{'correlId':'%s','response':'last reject note','reason':'undefined',code:%ld}",
+                				msgId, reasonCode);
             			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
             			free(response);
                 	}
             	} else {
-            		printf("reason timeout\n");
         			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'timeout':'last reject note'}");
             	}
             } else {
-    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", "{'error':'unable to process message'}");
+    			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, "{'error':'cmd missing'}");
             	printf("cbOnMetacashMessage: message missing cmd '%s'", message);
             }
+
+            free(msgId);
     	}
     }
 }
