@@ -366,13 +366,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
                 	}
                 	if(reason != NULL) {
                 		char *response = NULL;
-                		asprintf(&response, "{'correlId':'%s','response':'last reject note','reason':'%s',code:%ld}",
+                		asprintf(&response, "{'correlId':'%s','reason':'%s','code':%ld}",
                 				msgId, reason, reasonCode);
             			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
             			free(response);
                 	} else {
                 		char *response = NULL;
-                		asprintf(&response, "{'correlId':'%s','response':'last reject note','reason':'undefined',code:%ld}",
+                		asprintf(&response, "{'correlId':'%s','reason':'undefined','code':%ld}",
                 				msgId, reasonCode);
             			redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s", response_topic, response);
             			free(response);
