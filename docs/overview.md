@@ -89,11 +89,70 @@ message will be published to the ``response`` topic.
 
 ``{"event":"recalibrating"}``
 
+### Events published to the 'validator-event' topic
+
+``{"event":"read","amount":%ld,"channel":%ld}``
+
+``{"event":"reading"}``
+
+``{"event":"empty"}``
+
+``{"event":"emptying"}``
+
+``{"event":"credit","amount":%ld,"channel":%ld}``
+
+``{"event":"incomplete payout","dispensed":%ld,"requested":%ld,"cc":"%s"}``
+
+``{"event":"incomplete float","dispensed":%ld,"requested":%ld,"cc":"%s"}``
+
+``{"event":"rejecting"}``
+
+``{"event":"rejected"}``
+
+``{"event":"stacking"}``
+
+``{"event":"stored"}``
+
+``{"event":"stacked"}``
+
+``{"event":"safe jam"}``
+
+``{"event":"unsafe jam"}``
+
+``{"event":"disabled"}``
+
+``{"event":"fraud attempt","dispensed":%ld}``
+
+``{"event":"stacker full"}``
+
+``{"event":"cashbox removed"}``
+
+``{"event":"cashbox replaced"}``
+
+``{"event":"cleared from front"}``
+
+``{"event":"cleared into cashbox"}``
+
+``{"event":"calibration fail","error":"no error"}``
+
+``{"event":"calibration fail","error":"sensor flap"}``
+
+``{"event":"calibration fail","error":"sensor exit"}``
+
+``{"event":"calibration fail","error":"sensor coil 1"}``
+
+``{"event":"calibration fail","error":"sensor coil 2"}``
+
+``{"event":"calibration fail","error":"not initialized"}``
+
+``{"event":"calibration fail","error":"checksum error"}``
+
+``{"event":"recalibrating"}``
+
+
 [redis]: http://redis.io
 [mep-rr]: https://en.wikipedia.org/wiki/Request%E2%80%93response
 [mep-pubsub]: https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern
 [itl-ssp]: http://innovative-technology.com/product-files/ssp-manuals/smart-payout-ssp-manual.pdf
 [itl-hw-hopper]: http://innovative-technology.com/products/products-main/210-smart-hopper
 [itl-hw-validator]: http://innovative-technology.com/products/products-main/90-nv200
-
-
