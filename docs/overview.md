@@ -10,6 +10,7 @@ using a [Publish/Subscribe][mep-pubsub] message exchange pattern and,
 if necessary, a [Request/Response][mep-rr] message exchange pattern. [Redis][redis] is used as the
 message broker. The message payload is a rather simple structured JSON. Payout itself is implemented
 in the C programming language.
+Take a look at the [Changeomatic][changeomatic], a proof of concept money changer in 79 lines of Java code.
 
 ### Topics used by Payout
 
@@ -241,6 +242,7 @@ message will be published to the ``response`` topic.
   - ``{"correlId":"%s","reason":"unable to stack note"}``
   - ``{"correlId":"%s","reason":"undefined"}``
 
+[changeomatic]: https://github.com/sixtyeight/changeomatic/blob/master/src/main/java/at/metalab/changeomatic/ChangeomaticMain.java 
 [redis]: http://redis.io
 [mep-rr]: https://en.wikipedia.org/wiki/Request%E2%80%93response
 [mep-pubsub]: https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern
