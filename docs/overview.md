@@ -27,23 +27,29 @@ Using the above naming scheme we end up with the following topics
  - ``validator-event``
  - ``validator-dead-letter``
 
-### The 'request' / 'response' topics
+#### The 'request' / 'response' topics
 
 Those two topics are used in conjunction with each other to implement the aforementioned Request/Response pattern. Messages in a request topic are processed by Payout and the result is published to the response topic.
 Every message submitted to a request topic *must* contain a ``msgId`` property. The value of this property is then provided in the resulting response message as the ``correlId`` for correlation. Payout will never publish on it's
 own to this topic without a triggering message in the ``request`` topic. A list of supported commands and their properties is enclosed.
 
-### The 'event' topic
+#### The 'event' topic
 
 Payout is using this topic for publishing events which have been reported by a device. All messages published here will have at least an ``event`` property. Some events may provide additional properties (e.g. the value of an accepted coin or banknote). A detailed list of all supported events with their properties is enclosed.
 As an example, this ``{"event":"credit","amount":1000,"channel":2}`` will be published if a 10 Euro banknote
 has been accepted and the amount (which is provided in cents) can be credited. Or, in this example the hopper has accepted a 2 Euro coin: ``{"event":"coin credit","amount":200,"cc":"EUR"}``.
 
-### The 'dead-letter' topic
+#### The 'dead-letter' topic
+
+> This is not implemented right now
 
 If Payout is not able to interpret a message (e.g. the ``msgId`` property is missing or otherwise seriously malformed)
 it will publish a copy of that message into this topic. No further processing will be done and no response
 message will be published to the ``response`` topic.
+
+## Overview of Events, Requests and Responses
+
+> This section is still work in progress.
 
 ### Events published to the 'hopper-event' topic
 
@@ -159,7 +165,21 @@ message will be published to the ``response`` topic.
 
 ``{"cmd":"test-payout","amount":%ld,"msgId":"%s"}``
 
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","error":"not enough value in smart payout"}``
+  - ``{"correlId":"%s","error":"can't pay exact amount"}``
+  - ``{"correlId":"%s","error":"smart payout busy"}``
+  - ``{"correlId":"%s","error":"smart payout disabled"}``
+  - ``{"correlId":"%s","error":"unknown"}``
+
 ``{"cmd":"do-payout","amount":%ld,"msgId":"%s"}``
+
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","error":"not enough value in smart payout"}``
+  - ``{"correlId":"%s","error":"can't pay exact amount"}``
+  - ``{"correlId":"%s","error":"smart payout busy"}``
+  - ``{"correlId":"%s","error":"smart payout disabled"}``
+  - ``{"correlId":"%s","error":"unknown"}``
 
 ### Messages for the 'validator-request' topic
 
