@@ -227,7 +227,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					payoutOption = SSP6_OPTION_BYTE_TEST;
 				}
 
-				char *amountToken = "\"amount\":\"";
+				char *amountToken = "\"amount\":";
 				char *amountStart = strstr(message, amountToken);
 				if (amountStart != NULL) {
 					amountStart = amountStart + strlen(amountToken);
