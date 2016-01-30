@@ -149,6 +149,31 @@ message will be published to the ``response`` topic.
 
 ``{"event":"recalibrating"}``
 
+### Messages for the 'hopper-request' topic
+
+``{"cmd":"empty","msgId":"%s"}``
+
+``{"cmd":"enable","msgId":"%s"}``
+
+``{"cmd":"disable","msgId":"%s"}``
+
+``{"cmd":"test-payout","amount":%ld,"msgId":"%s"}``
+
+``{"cmd":"do-payout","amount":%ld,"msgId":"%s"}``
+
+### Messages for the 'validator-request' topic
+
+``{"cmd":"empty","msgId":"%s"}``
+
+``{"cmd":"enable","msgId":"%s"}``
+
+``{"cmd":"disable","msgId":"%s"}``
+
+``{"cmd":"test-payout","amount":%ld,"msgId":"%s"}``
+
+``{"cmd":"do-payout","amount":%ld,"msgId":"%s"}``
+
+``{"cmd":"last-reject-note","msgId":"%s"}``
 
 [redis]: http://redis.io
 [mep-rr]: https://en.wikipedia.org/wiki/Request%E2%80%93response
@@ -156,3 +181,5 @@ message will be published to the ``response`` topic.
 [itl-ssp]: http://innovative-technology.com/product-files/ssp-manuals/smart-payout-ssp-manual.pdf
 [itl-hw-hopper]: http://innovative-technology.com/products/products-main/210-smart-hopper
 [itl-hw-validator]: http://innovative-technology.com/products/products-main/90-nv200
+
+
