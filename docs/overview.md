@@ -171,9 +171,55 @@ message will be published to the ``response`` topic.
 
 ``{"cmd":"test-payout","amount":%ld,"msgId":"%s"}``
 
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","error":"not enough value in smart payout"}``
+  - ``{"correlId":"%s","error":"can't pay exact amount"}``
+  - ``{"correlId":"%s","error":"smart payout busy"}``
+  - ``{"correlId":"%s","error":"smart payout disabled"}``
+  - ``{"correlId":"%s","error":"unknown"}``
+
 ``{"cmd":"do-payout","amount":%ld,"msgId":"%s"}``
 
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","error":"not enough value in smart payout"}``
+  - ``{"correlId":"%s","error":"can't pay exact amount"}``
+  - ``{"correlId":"%s","error":"smart payout busy"}``
+  - ``{"correlId":"%s","error":"smart payout disabled"}``
+  - ``{"correlId":"%s","error":"unknown"}``
+
 ``{"cmd":"last-reject-note","msgId":"%s"}``
+
+  - ``{"correlId":"%s","reason":"%s","code":%ld}"``
+  - ``{"correlId":"%s","reason":"note accepted"}``
+  - ``{"correlId":"%s","reason":"note length incorrect"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 2)"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 3)"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 4)"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 5)"}``
+  - ``{"correlId":"%s","reason":"channel inhibited"}``
+  - ``{"correlId":"%s","reason":"second note inserted"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 8)"}``
+  - ``{"correlId":"%s","reason":"note recognised in more than one channel"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 10)"}``
+  - ``{"correlId":"%s","reason":"note too long"}``
+  - ``{"correlId":"%s","reason":"undisclosed (reject reason 12)"}``
+  - ``{"correlId":"%s","reason":"mechanism slow/stalled"}``
+  - ``{"correlId":"%s","reason":"strimming attempt detected"}``
+  - ``{"correlId":"%s","reason":"fraud channel reject"}``
+  - ``{"correlId":"%s","reason":"no notes inserted"}``
+  - ``{"correlId":"%s","reason":"peak detect fail"}``
+  - ``{"correlId":"%s","reason":"twisted note detected"}``
+  - ``{"correlId":"%s","reason":"escrow time-out"}``
+  - ``{"correlId":"%s","reason":"bar code scan fail"}``
+  - ``{"correlId":"%s","reason":"rear sensor 2 fail"}``
+  - ``{"correlId":"%s","reason":"slot fail 1"}``
+  - ``{"correlId":"%s","reason":"slot fail 2"}``
+  - ``{"correlId":"%s","reason":"lens over-sample"}``
+  - ``{"correlId":"%s","reason":"width detect fail"}``
+  - ``{"correlId":"%s","reason":"short note detected"}``
+  - ``{"correlId":"%s","reason":"note payout"}``
+  - ``{"correlId":"%s","reason":"unable to stack note"}``
+  - ``{"correlId":"%s","reason":"undefined"}``
 
 [redis]: http://redis.io
 [mep-rr]: https://en.wikipedia.org/wiki/Request%E2%80%93response
