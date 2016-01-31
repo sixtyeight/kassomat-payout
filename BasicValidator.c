@@ -569,12 +569,12 @@ void mc_handle_events_hopper(struct m_device *device,
 			break;
 		case SSP_POLL_DISPENSING:
 			redisAsyncCommand(db, NULL, NULL,
-					"PUBLISH hopper-event {\"event\":\"dispensing\",\"channel\":%ld}",
+					"PUBLISH hopper-event {\"event\":\"dispensing\",\"amount\":%ld}",
 					poll->events[i].data1);
 			break;
 		case SSP_POLL_DISPENSED:
 			redisAsyncCommand(db, NULL, NULL,
-					"PUBLISH hopper-event {\"event\":\"dispensed\",\"channel\":%ld}",
+					"PUBLISH hopper-event {\"event\":\"dispensed\",\"amount\":%ld}",
 					poll->events[i].data1);
 			break;
 		case SSP_POLL_CASHBOX_PAID:
