@@ -68,6 +68,7 @@ void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId);
 void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device);
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC);
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile);
@@ -205,6 +206,16 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				free(accepted);
 
 				mc_ssp_empty(&device->sspC);
+			} else if (strstr(message, "\"cmd\":\"smart-empty\"")) {
+				char *accepted = NULL;
+				asprintf(&accepted,
+						"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"accepted\":\"true\"}",
+						responseMsgId, msgId);
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+						response_topic, accepted);
+				free(accepted);
+
+				mc_ssp_smart_empty(&device->sspC);
 			} else if (strstr(message, "\"cmd\":\"enable\"")) {
 				char *accepted = NULL;
 				asprintf(&accepted,
@@ -605,6 +616,22 @@ void mc_handle_events_hopper(struct m_device *device,
 			redisAsyncCommand(db, NULL, NULL,
 					"PUBLISH hopper-event {\"event\":\"emptying\"}");
 			break;
+		case SSP_POLL_SMART_EMPTYING:
+			asprintf(&response,
+					"{\"event\":\"smart emptying\",\"amount\":%ld,\"cc\":\"%s\"}",
+					poll->events[i].data1, poll->events[i].cc);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s",
+					response);
+			free(response);
+			break;
+		case SSP_POLL_SMART_EMPTIED:
+			asprintf(&response,
+					"{\"event\":\"smart emptied\",\"amount\":%ld,\"cc\":\"%s\"}",
+					poll->events[i].data1, poll->events[i].cc);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s",
+					response);
+			free(response);
+			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
 			redisAsyncCommand(db, NULL, NULL,
@@ -721,6 +748,10 @@ void mc_handle_events_validator(struct m_device *device,
 		case SSP_POLL_EMPTYING:
 			redisAsyncCommand(db, NULL, NULL,
 					"PUBLISH validator-event {\"event\":\"emptying\"}");
+			break;
+		case SSP_POLL_SMART_EMPTYING:
+			redisAsyncCommand(db, NULL, NULL,
+					"PUBLISH validator-event {\"event\":\"smart emptying\"}");
 			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
@@ -1192,6 +1223,23 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_EMPTY;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	// no data to parse
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = 0x52;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
