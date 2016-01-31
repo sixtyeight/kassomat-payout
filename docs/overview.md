@@ -72,6 +72,10 @@ message will be published to the ``response`` topic.
 
 ``{"event":"emptying"}``
 
+``{"event":"smart emptying","amount":%ld,"cc":"%s"}``
+
+``{"event":"smart emptied","amount":%ld,"cc":"%s"}``
+
 ``{"event":"credit","channel":%ld,"cc":"%s"}``
 
 ``{"event":"incomplete payout","dispensed":%ld,"requested":%ld,"cc":"%s"}``
@@ -159,6 +163,8 @@ message will be published to the ``response`` topic.
 ### Messages for the 'hopper-request' topic
 
 ``{"cmd":"empty","msgId":"%s"}``
+
+``{"cmd":"smart-empty","msgId":"%s"}``
 
 ``{"cmd":"enable","msgId":"%s"}``
 
