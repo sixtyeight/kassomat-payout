@@ -58,9 +58,9 @@ message will be published to the ``response`` topic.
 
 ``{"event":"reading"}``
 
-``{"event":"dispensing","channel":%ld}``
+``{"event":"dispensing","amount":%ld}``
 
-``{"event":"dispensed","channel":%ld}``
+``{"event":"dispensed","amount":%ld}``
 
 ``{"event":"cashbox paid","amount":%ld,"cc":"%s"}``
 
