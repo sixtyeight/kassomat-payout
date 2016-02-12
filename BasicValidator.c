@@ -228,6 +228,74 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				ssp6_enable(&device->sspC);
 			} else if (strstr(message, "\"cmd\":\"disable\"")) {
 				ssp6_disable(&device->sspC);
+			} else if(strstr(message, "\"cmd\":\"inhibit-channels\"")) {
+				const char *channelsToken = "\"channels\":\"";
+
+				char *channelsStart = strstr(message, channelsToken);
+				if (channelsStart == NULL) {
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, "{\"error\":\"channels missing\"}");
+					return;
+				}
+				channelsStart= channelsStart + strlen(channelsToken);
+				char *channelsEnd = strstr(channelsStart, "\"");
+				if (channelsEnd == NULL) {
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, "{\"error\":\"channels not a string\"}");
+					return;
+				}
+
+				char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+				unsigned char lowChannels = 0xFF;
+				unsigned char highChannels = 0xFF;
+
+				// 8 channels for now
+				if(strstr(channels, "1") != NULL) {
+					lowChannels &= ~(1 << 0);
+				}
+				if(strstr(channels, "2") != NULL) {
+					lowChannels &= ~(1 << 1);
+				}
+				if(strstr(channels, "3") != NULL) {
+					lowChannels &= ~(1 << 2);
+				}
+				if(strstr(channels, "4") != NULL) {
+					lowChannels &= ~(1 << 3);
+				}
+				if(strstr(channels, "5") != NULL) {
+					lowChannels &= ~(1 << 4);
+				}
+				if(strstr(channels, "6") != NULL) {
+					lowChannels &= ~(1 << 5);
+				}
+				if(strstr(channels, "7") != NULL) {
+					lowChannels &= ~(1 << 6);
+				}
+				if(strstr(channels, "8") != NULL) {
+					lowChannels &= ~(1 << 7);
+				}
+
+				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, lowChannels, highChannels);
+
+				if(r == SSP_RESPONSE_OK) {
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"ok\"}",
+							msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				} else {
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"failed\"}",
+							msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				}
+
+				free(channels);
 			} else if (strstr(message, "\"cmd\":\"test-payout\"")
 					|| strstr(message, "\"cmd\":\"do-payout\"")) {
 				int payoutOption = 0;
