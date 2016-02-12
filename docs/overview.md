@@ -214,6 +214,11 @@ message will be published to the ``response`` topic.
   - ``{"correlId":"%s","error":"smart payout disabled"}``
   - ``{"correlId":"%s","error":"unknown"}``
 
+``{"cmd":"inhibit-channels","channels":"%s","msgId":"%s"}``
+
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","result":"failed"}``
+
 ``{"cmd":"last-reject-note","msgId":"%s"}``
 
   - ``{"correlId":"%s","reason":"%s","code":%ld}"``
