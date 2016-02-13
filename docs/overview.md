@@ -9,8 +9,8 @@ All Interaction with Payout is done asynchronously
 using a [Publish/Subscribe][mep-pubsub] message exchange pattern and,
 if necessary, a [Request/Response][mep-rr] message exchange pattern. [Redis][redis] is used as the
 message broker. The message payload is a rather simple structured JSON. Payout itself is implemented
-in the C programming language.
-Take a look at the [Changeomatic][changeomatic], a proof of concept money changer in 79 lines of Java code.
+in the C programming language. Some examples can be seen [here](examples.md).
+Take also a look at the [Changeomatic][changeomatic], a proof of concept money changer in Java.
 
 ### Topics used by Payout
 
