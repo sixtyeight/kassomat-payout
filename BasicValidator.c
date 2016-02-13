@@ -668,6 +668,10 @@ void mc_handle_events_hopper(struct m_device *device,
 			redisAsyncCommand(db, NULL, NULL,
 					"PUBLISH hopper-event {\"event\":\"jammed\"}");
 			break;
+		case SSP_POLL_FRAUD_ATTEMPT:
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s",
+					"{\"event\":\"fraud attempt\"}");
+			break;
 		case SSP_POLL_COIN_CREDIT:
 			asprintf(&response,
 					"{\"event\":\"coin credit\",\"amount\":%ld,\"cc\":\"%s\"}",
