@@ -5,7 +5,7 @@
  - [libuuid][libuuid]
  - [SSP protocol example code from Innovative Technology][itl]
 
-# [Münzprüfer RM5 Evolution Dokumentation][rm5]
+# [Münzprüfer RM5 CC-Talk Dokumentation][rm5]
 
 # udev rule
 ``SUBSYSTEM=="tty" ATTRS{manufacturer}=="Innovative Technology LTD" SYMLINK+="kassomat"``
