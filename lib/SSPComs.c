@@ -92,8 +92,8 @@ Notes:
 */
 int  SSPSendCommand(const SSP_PORT port, SSP_COMMAND* cmd)
 {
-    SSP_TX_RX_PACKET ssp;
-	clock_t txTime,currentTime,rxTime;
+  SSP_TX_RX_PACKET ssp;
+  clock_t txTime,currentTime;
 	int i;
 	unsigned char encryptLength;
 	unsigned short crcR;
@@ -141,8 +141,6 @@ int  SSPSendCommand(const SSP_PORT port, SSP_COMMAND* cmd)
         retry--;
     }while(retry > 0);
 
-
-    rxTime = GetClockMs();
 
     if(cmd->ResponseStatus == SSP_CMD_TIMEOUT){
             cmd->ResponseData[0] = SSP_RESPONSE_TIMEOUT;
