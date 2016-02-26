@@ -53,7 +53,7 @@ clean :
 # Release_target
 
 Release_target.BIN = bin/libitlssp.a
-Release_target.LIB = bin/shared/libitlssp.so
+Release_target.LIB = bin/libitlssp.so
 Release_target.OBJ = Encryption.o ITLSSPProc.o Random.o SSPComs.o serialfunc.o  SSPDownload.o ssp_commands.o
 DEP_FILES += Encryption.d ITLSSPProc.d Random.d SSPComs.d serialfunc.d
 clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ) $(Release_target.LIB)
