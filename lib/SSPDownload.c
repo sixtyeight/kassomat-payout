@@ -8,9 +8,9 @@
 
 #include "Random.h"
 #include "Encryption.h"
-#include "../inc/SSPComs.h"
+#include "../SSPComs.h"
 #include "serialfunc.h"
-#include "../inc/ssp_defines.h"
+#include "../ssp_defines.h"
 #include <pthread.h>
 unsigned char download_in_progress;
 unsigned long download_block;

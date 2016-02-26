@@ -6,7 +6,7 @@
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
-#include "../inc/itl_types.h"
+#include "../itl_types.h"
 #include "serialfunc.h"
 //#include <asm/termios.h>
 #define FIONREAD 0x541B

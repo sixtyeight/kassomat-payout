@@ -1,4 +1,4 @@
-#include "../inc/itl_types.h"
+#include "..//itl_types.h"
 #include <stdlib.h>
 #include "Encryption.h"
 

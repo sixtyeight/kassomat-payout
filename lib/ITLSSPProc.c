@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "Random.h"
 #include "Encryption.h"
-#include "../inc/ssp_defines.h"
+#include "../ssp_defines.h"
 #include <unistd.h>
 #include <stdio.h>
 

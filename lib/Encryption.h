@@ -2,7 +2,7 @@
 #define _AES_H_
 
 #include <assert.h>
-#include "../inc/itl_types.h"
+#include "../itl_types.h"
 
 //
 

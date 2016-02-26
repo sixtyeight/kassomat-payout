@@ -1,8 +1,8 @@
 
 #include <sys/time.h>
 #include <time.h>
-#include "../inc/SSPComs.h"
-#include "../inc/ssp_defines.h"
+#include "../SSPComs.h"
+#include "../ssp_defines.h"
 #include "Encryption.h"
 #include "serialfunc.h"
 #include "ITLSSPProc.h"
