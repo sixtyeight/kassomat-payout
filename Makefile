@@ -33,12 +33,13 @@ COMPILE_rc = windres $(RCFLAGS) -J rc -O coff -i $< -o $@ -I$(dir $<)
 all: all.before all.targets all.after
 
 all.before :
-	-
+	$(MAKE) -C lib
 all.after : $(FIRST_TARGET)
 
 all.targets : Release_target 
 
 clean :
+	$(MAKE) -C lib clean
 	rm -fv $(clean.OBJ)
 	rm -fv $(DEP_FILES)
 
