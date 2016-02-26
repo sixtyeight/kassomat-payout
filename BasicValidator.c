@@ -16,7 +16,7 @@
 // ssp manual available at http://innovative-technology.com/images/pdocuments/manuals/SSP_Manual.pdf
 #include "port_linux.h"
 #include "ssp_defines.h"
-#include "ssp_helpers.h"
+#include "ssp_commands.h"
 #include "SSPComs.h"
 
 // c client for redis

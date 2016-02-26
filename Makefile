@@ -35,7 +35,7 @@ all: all.before all.targets all.after
 all.before :
 	-
 all.after : $(FIRST_TARGET)
-	
+
 all.targets : Release_target 
 
 clean :
@@ -48,7 +48,7 @@ clean :
 # Release_target
 
 Release_target.BIN = BasicValidator
-Release_target.OBJ = BasicValidator.o ssp_helpers.o linux.o
+Release_target.OBJ = BasicValidator.o linux.o
 DEP_FILES += BasicValidator.d 
 clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ)
 
@@ -63,10 +63,10 @@ Release_target : CFLAGS -= -g -pipe
 endif
 
 Release_target.before :
-	
-	
+
+
 Release_target.after_always : $(Release_target.BIN)
-	
+
 $(Release_target.BIN) : $(Release_target.OBJ)
 	$(LINK_con)
 	
