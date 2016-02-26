@@ -2,6 +2,7 @@
 //#include "stdafx.h"
 #include "../itl_types.h"
 #include <stdlib.h>
+#include <time.h>
 #include "Random.h"
 
 
@@ -131,20 +132,6 @@ unsigned long long GenerateRandomNumber(void)
 
 long long GetRTSC( void )
 {
-	/*int tmp1 = 0;
-	int tmp2 = 0;
-
-	__asm
-	{
-		RDTSC;			//Clock cycles since CPU started
-		mov tmp1, eax;
-		mov tmp2, edx;
-	}
-
-	return ((long long)tmp1 * (long long)tmp2);*/
-	long long result;
-	asm ("RDTSC" : "=A" (result));
-	return result;
-
+  return (long long) time(NULL);
 }
 
