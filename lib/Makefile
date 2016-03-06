@@ -1,6 +1,10 @@
 # -*- mode: Makefile; -*-
 # -----------------------------------------
-# project itlssptest
+# project itlssp
+
+
+
+
 
 
 CFLAGS_C = $(filter-out -include "sdk.h",$(CFLAGS))
@@ -9,12 +13,13 @@ CFLAGS_C = $(filter-out -include "sdk.h",$(CFLAGS))
 
 # MAKE_DEP = -MMD -MT $@ -MF $(@:.o=.d)
 
-CFLAGS = -Wall -g -O0
-INCLUDES = 
+CFLAGS = -Wall
+INCLUDES =
 LDFLAGS =  -s
-RCFLAGS = 
-\LDLIBS = $(T_LDLIBS)  -lstdc++ -lpthread
-LDLIBS = $(T_LDLIBS)  -lpthread -lhiredis -levent -luuid
+RCFLAGS =
+LDLIBS = $(T_LDLIBS)  -lpthread
+#LDLIBS = $(T_LDLIBS)  -lstdc++ -lpthread
+
 
 LINK_exe = gcc -o $@ $^ $(LDFLAGS) $(LDLIBS)
 LINK_con = gcc -o $@ $^ $(LDFLAGS) $(LDLIBS)
@@ -33,13 +38,12 @@ COMPILE_rc = windres $(RCFLAGS) -J rc -O coff -i $< -o $@ -I$(dir $<)
 all: all.before all.targets all.after
 
 all.before :
-	$(MAKE) -C lib
+	-
 all.after : $(FIRST_TARGET)
 
-all.targets : Release_target 
+all.targets : Release_target
 
 clean :
-	$(MAKE) -C lib clean
 	rm -fv $(clean.OBJ)
 	rm -fv $(DEP_FILES)
 
@@ -48,19 +52,20 @@ clean :
 # -----------------------------------------
 # Release_target
 
-Release_target.BIN = BasicValidator
-Release_target.OBJ = BasicValidator.o linux.o
-DEP_FILES += BasicValidator.d 
-clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ)
+Release_target.BIN = bin/libitlssp.a
+Release_target.LIB = bin/libitlssp.so
+Release_target.OBJ = Encryption.o ITLSSPProc.o Random.o SSPComs.o serialfunc.o  SSPDownload.o ssp_commands.o
+DEP_FILES += Encryption.d ITLSSPProc.d Random.d SSPComs.d serialfunc.d
+clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ) $(Release_target.LIB)
 
-Release_target : Release_target.before $(Release_target.BIN) Release_target.after_always
-Release_target : CFLAGS += -g -O0
-Release_target : INCLUDES += 
-Release_target : RCFLAGS += 
-Release_target : LDFLAGS += -s   
-Release_target : T_LDLIBS = ./lib/bin/libitlssp.a 
+Release_target : Release_target.before $(Release_target.BIN) $(Release_target.LIB) Release_target.after_always
+Release_target : CFLAGS += -O3 -fPIC
+Release_target : INCLUDES +=
+Release_target : RCFLAGS +=
+Release_target : LDFLAGS += -s   $(CREATE_DEF)
+Release_target : T_LDLIBS =
 ifdef LMAKE
-Release_target : CFLAGS -= -g -pipe
+Release_target : CFLAGS -= -O3 -g -pipe
 endif
 
 Release_target.before :
@@ -69,9 +74,10 @@ Release_target.before :
 Release_target.after_always : $(Release_target.BIN)
 
 $(Release_target.BIN) : $(Release_target.OBJ)
-	$(LINK_con)
-	
-# -----------------------------------------
+	$(LINK_lib)
+$(Release_target.LIB) : $(Release_target.OBJ)
+	$(LINK_dll)
+
 ifdef MAKE_DEP
 -include $(DEP_FILES)
 endif
