@@ -99,6 +99,13 @@ void interrupt(int signal) {
 	receivedSignal = signal;
 }
 
+void hardwareWaitTime() {
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 300000000;
+	nanosleep(&ts, NULL);
+}
+
 redisAsyncContext* mc_connect_redis(struct m_metacash *metacash) {
 	redisAsyncContext *conn = redisAsyncConnect(metacash->redisHost,
 			metacash->redisPort);
@@ -146,6 +153,8 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
 void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 	if (r == NULL)
 		return;
+
+	hardwareWaitTime();
 
 	struct m_metacash *m = c->data;
 	redisReply *reply = r;
@@ -1124,6 +1133,8 @@ void mc_ssp_close_serial_device(struct m_metacash *metacash) {
 
 void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash) {
 	SSP_POLL_DATA6 poll;
+
+	hardwareWaitTime();
 
 	// poll the unit
 	SSP_RESPONSE_ENUM resp;
