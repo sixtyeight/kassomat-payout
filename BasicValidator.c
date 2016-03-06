@@ -591,6 +591,12 @@ int main(int argc, char *argv[]) {
 		mc_ssp_close_serial_device(&metacash);
 	}
 
+	// cleanup stuff before exiting.
+	redisAsyncDisconnect(metacash.db);
+	redisAsyncDisconnect(metacash.pubSub);
+
+	event_base_free(metacash.eventBase);
+
 	closelog();
 
 	return 0;
