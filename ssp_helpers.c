@@ -118,7 +118,7 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 			for (i = 0; i < 4; ++i)
 				setup_request_data->FirmwareVersion[i] =
 						sspC->ResponseData[offset++];
-			setup_request_data->FirmwareVersion[i] = '\n'; //NULL TERMINATOR
+			setup_request_data->FirmwareVersion[i] = '\0'; //NULL TERMINATOR
 
 			// Country Code field is obsolete in SSPv6
 			offset += 3;
