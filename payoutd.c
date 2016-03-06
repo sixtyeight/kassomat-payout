@@ -497,9 +497,6 @@ void cbConnectDb(const redisAsyncContext *c, int status) {
 		return;
 	}
 	fprintf(stderr, "Connected to database...\n");
-
-	// redisCommand(c->c, "GET credit"); // TODO: read the current credit sync and store in metacash
-	// redisAsyncCommand(db, NULL, NULL, "SET component:ssp 1");
 }
 
 void cbDisconnectDb(const redisAsyncContext *c, int status) {
