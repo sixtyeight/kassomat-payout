@@ -48,9 +48,9 @@ clean :
 # -----------------------------------------
 # Release_target
 
-Release_target.BIN = BasicValidator
-Release_target.OBJ = BasicValidator.o linux.o
-DEP_FILES += BasicValidator.d 
+Release_target.BIN = payoutd 
+Release_target.OBJ = payoutd.o linux.o
+DEP_FILES += payoutd.d 
 clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ)
 
 Release_target : Release_target.before $(Release_target.BIN) Release_target.after_always
