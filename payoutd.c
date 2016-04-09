@@ -77,6 +77,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 		unsigned char *reason);
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -92,6 +93,8 @@ static const char *CURRENCY = "EUR";
 static const char ROUTE_CASHBOX = 0x01;
 static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
+
+#define SSP_CMD_GET_ALL_LEVELS 0x22
 
 int receivedSignal = 0;
 
@@ -360,6 +363,10 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 						free(response);
 					}
 				}
+			} else if (strstr(message, "\"cmd\":\"get-all-levels\"")) {
+
+				mc_ssp_get_all_levels(&device->sspC);
+
 			} else if (strstr(message, "\"cmd\":\"last-reject-note\"")) {
 				unsigned char reasonCode;
 				char *reason = NULL;
@@ -1358,6 +1365,65 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
 	// no data to parse
+
+	return resp;
+}
+
+// get all the current levels in the device
+SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = SSP_CMD_GET_ALL_LEVELS;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	printf("get-all-levels: responseDataLength=%d\n", sspC->ResponseDataLength);
+
+	/* The first data byte oin the response is the number of counters returned. Each counter consists of 9 bytes of
+	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ascii country
+     * code.
+     */
+
+	int i = 0;
+
+	i++; // move onto numCounters
+	int numCounters = sspC->ResponseData[i];
+
+	printf("get-all-levels: numCounters=%d\n", numCounters);
+
+	int j; // current counter
+	for (j = 0; j < numCounters; ++j) {
+		int k;
+
+		int value = 0;
+		int level = 0;
+		char cc[4] = {0};
+
+		for (k = 0; k < 2; ++k) {
+			i++; //move through the 2 bytes of data
+			level +=
+					(((unsigned long) sspC->ResponseData[i])
+							<< (8 * k));
+		}
+		for (k = 0; k < 4; ++k) {
+			i++; //move through the 4 bytes of data
+			value +=
+					(((unsigned long) sspC->ResponseData[i])
+							<< (8 * k));
+		}
+		for (k = 0; k < 3; ++k) {
+			i++; //move through the 3 bytes of country code
+			cc[k] =
+					sspC->ResponseData[i];
+		}
+
+		printf("get-all-levels: value=%d level=%d cc=%s\n", value, level, cc);
+	}
 
 	return resp;
 }
