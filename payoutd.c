@@ -82,6 +82,7 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 		unsigned char *reason);
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json);
+SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -99,6 +100,7 @@ static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
 #define SSP_CMD_GET_ALL_LEVELS 0x22
+#define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
 
 int receivedSignal = 0;
 
@@ -380,6 +382,54 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				free(response);
 				free(json);
+			} else if (strstr(message, "\"cmd\":\"set-denomination-level\"")) {
+				char *levelToken = "\"level\":";
+				char *levelStart = strstr(message, levelToken);
+				int level;
+				if (levelStart != NULL) {
+					levelStart = levelStart + strlen(levelToken);
+					level = atoi(levelStart);
+				}
+
+				char *amountToken = "\"amount\":";
+				char *amountStart = strstr(message, amountToken);
+				int amount;
+				if (amountStart != NULL) {
+					amountStart = amountStart + strlen(amountToken);
+					amount = atoi(amountStart);
+				}
+
+				if(level > 0) {
+					/* Quote from the spec -.-
+					 *
+					 * A command to increment the level of coins of a denomination stored in the hopper.
+					 * The command is formatted with the command byte first, amount of coins to *add*
+					 * as a 2-byte little endian, the value of coin as 2-byte little endian and
+					 * (if using protocol version 6) the country code of the coin as 3 byte ASCII. The level of coins for a
+					 * denomination can be set to zero by sending a zero level for that value.
+					 *
+					 * In a nutshell: This command behaves only with a level of 0 as expected (setting the absolute value),
+					 * otherwise it works like the not existing "increment denomination level" command.
+					 */
+
+					mc_ssp_set_denomination_level(&device->sspC, amount, 0, "EUR"); // ignore the result for now
+				}
+
+				if (mc_ssp_set_denomination_level(&device->sspC, amount, level, "EUR") == SSP_RESPONSE_OK) {
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"ok\"}", msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				} else {
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"failed\"}", msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				}
 			} else if (strstr(message, "\"cmd\":\"last-reject-note\"")) {
 				unsigned char reasonCode;
 				char *reason = NULL;
@@ -1378,6 +1428,33 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
 	// no data to parse
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc) {
+	sspC->CommandDataLength = 10;
+	sspC->CommandData[0] = SSP_CMD_SET_DENOMINATION_LEVEL;
+
+	int j = 0;
+	int i;
+
+	for (i = 0; i < 2; i++)
+		sspC->CommandData[++j] = level >> (i * 8);
+
+	for (i = 0; i < 4; i++)
+		sspC->CommandData[++j] = amount >> (i * 8);
+
+	for (i = 0; i < 3; i++)
+		sspC->CommandData[++j] = cc[i];
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
 	return resp;
 }
