@@ -363,13 +363,13 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 						i++; //move through the 4 bytes of data
 						poll_response->events[poll_response->event_count].data1 +=
 								(((unsigned long) sspC->ResponseData[i])
-										<< (8 * i));
+										<< (8 * k)); // METALAB FIX: wrong index
 					}
 					for (k = 0; k < 4; ++k) {
 						i++; //move through the 4 bytes of data
 						poll_response->events[poll_response->event_count].data2 +=
 								(((unsigned long) sspC->ResponseData[i])
-										<< (8 * i));
+										<< (8 * k)); // METALAB FIX: wrong index
 					}
 					for (k = 0; k < 3; ++k) {
 						i++; //move through the 3 bytes of country code
