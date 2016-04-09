@@ -83,6 +83,7 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json);
 SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc);
+SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value, const char *cc, const char option);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -314,6 +315,63 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				}
 
 				free(channels);
+			} else if(strstr(message, "\"cmd\":\"test-float\"")
+					|| strstr(message, "\"cmd\":\"do-float\"")) {
+				// basically a copy of do/test-payout ...
+
+				int payoutOption = 0;
+
+				if (strstr(message, "\"cmd\":\"do-float\"")) {
+					payoutOption = SSP6_OPTION_BYTE_DO;
+				} else {
+					payoutOption = SSP6_OPTION_BYTE_TEST;
+				}
+
+				char *amountToken = "\"amount\":";
+				char *amountStart = strstr(message, amountToken);
+				if (amountStart != NULL) {
+					amountStart = amountStart + strlen(amountToken);
+					int amount = atoi(amountStart);
+
+					if (mc_ssp_float(&device->sspC, amount, CURRENCY,
+							payoutOption) != SSP_RESPONSE_OK) {
+						// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+						redisAsyncContext *db = m->db;
+						char *error = NULL;
+						switch (device->sspC.ResponseData[1]) {
+						case 0x01:
+							error = "not enough value in smart payout";
+							break;
+						case 0x02:
+							error = "can't pay exact amount";
+							break;
+						case 0x03:
+							error = "smart payout busy";
+							break;
+						case 0x04:
+							error = "smart payout disabled";
+							break;
+						default:
+							error = "unknown";
+							break;
+						}
+						char *response = NULL;
+						asprintf(&response,
+								"{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId,
+								error);
+						redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+								response_topic, response);
+						free(response);
+					} else {
+						char *response = NULL;
+						asprintf(&response,
+								"{\"correlId\":\"%s\",\"result\":\"ok\"}",
+								msgId);
+						redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+								response_topic, response);
+						free(response);
+					}
+				}
 			} else if (strstr(message, "\"cmd\":\"test-payout\"")
 					|| strstr(message, "\"cmd\":\"do-payout\"")) {
 				int payoutOption = 0;
@@ -1531,6 +1589,41 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 
     /* Dispose of StringBuffer's memory */
     sb->dispose( &sb ); /* Note: Need to pass ADDRESS of struct pointer to dispose() */
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
+		const char *cc, const char option) {
+	int i;
+
+	sspC->CommandDataLength = 11;
+	sspC->CommandData[0] = SSP_CMD_FLOAT;
+
+	int j = 0;
+
+	// amount to keep
+	for (i = 0; i < 2; i++)
+		sspC->CommandData[++j] = value >> (i * 8);
+
+	// payout
+	sspC->CommandData[++j] = 0;
+	sspC->CommandData[++j] = 0;
+	sspC->CommandData[++j] = 0;
+	sspC->CommandData[++j] = 0;
+
+	for (i = 0; i < 3; i++)
+		sspC->CommandData[++j] = cc[i];
+
+	sspC->CommandData[++j] = option;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
 	return resp;
 }
