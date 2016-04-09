@@ -373,7 +373,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				char *response = NULL;
 				asprintf(&response,
-						"{\"correlId\":\"%s\",\"levels\":[%s]\"",
+						"{\"correlId\":\"%s\",\"levels\":[%s]}",
 						msgId, json);
 				redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
 						response_topic, response);
