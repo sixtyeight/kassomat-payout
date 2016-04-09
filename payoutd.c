@@ -30,6 +30,10 @@
 // libuuid is used to generate msgIds for the responses
 #include <uuid/uuid.h>
 
+// https://sites.google.com/site/rickcreamer/Home/cc/c-implementation-of-stringbuffer-functionality
+#include "StringBuffer.h"
+#include "StringBuffer.c"
+
 struct m_metacash;
 
 struct m_device {
@@ -77,7 +81,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 		unsigned char *reason);
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
-SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -364,9 +368,18 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					}
 				}
 			} else if (strstr(message, "\"cmd\":\"get-all-levels\"")) {
+				char *json = NULL;
+				mc_ssp_get_all_levels(&device->sspC, &json);
 
-				mc_ssp_get_all_levels(&device->sspC);
+				char *response = NULL;
+				asprintf(&response,
+						"{\"correlId\":\"%s\",\"levels\":[%s]\"",
+						msgId, json);
+				redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+						response_topic, response);
 
+				free(response);
+				free(json);
 			} else if (strstr(message, "\"cmd\":\"last-reject-note\"")) {
 				unsigned char reasonCode;
 				char *reason = NULL;
@@ -1370,7 +1383,7 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 }
 
 // get all the current levels in the device
-SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_GET_ALL_LEVELS;
 
@@ -1382,8 +1395,6 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC) {
 	// extract the device response code
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
-	printf("get-all-levels: responseDataLength=%d\n", sspC->ResponseDataLength);
-
 	/* The first data byte oin the response is the number of counters returned. Each counter consists of 9 bytes of
 	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ascii country
      * code.
@@ -1394,7 +1405,8 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC) {
 	i++; // move onto numCounters
 	int numCounters = sspC->ResponseData[i];
 
-	printf("get-all-levels: numCounters=%d\n", numCounters);
+    /* Create StringBuffer 'object' (struct) */
+    SB *sb = getStringBuffer();
 
 	int j; // current counter
 	for (j = 0; j < numCounters; ++j) {
@@ -1422,8 +1434,26 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC) {
 					sspC->ResponseData[i];
 		}
 
-		printf("get-all-levels: value=%d level=%d cc=%s\n", value, level, cc);
+		char *response = NULL;
+		asprintf(&response,
+				"{\"value\":%d,\"level\":%d,\"cc\":\"%s\"}", value, level, cc);
+
+		if(j > 0) {
+			char *sep = ",";
+			sb->append( sb, sep); // json array seperator
+		}
+		sb->append( sb, response);
+
+		free(response);
 	}
+
+    /* Call toString() function to get catenated list */
+    char *result = sb->toString( sb );
+
+    asprintf(json, "%s", result);
+
+    /* Dispose of StringBuffer's memory */
+    sb->dispose( &sb ); /* Note: Need to pass ADDRESS of struct pointer to dispose() */
 
 	return resp;
 }
