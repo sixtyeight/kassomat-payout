@@ -161,6 +161,7 @@ message will be published to the ``response`` topic.
 ``{"event":"recalibrating"}``
 
 ### Messages for the 'hopper-request' topic
+``{"cmd":"get-all-levels","msgId":"%s"}``
 
 ``{"cmd":"empty","msgId":"%s"}``
 
