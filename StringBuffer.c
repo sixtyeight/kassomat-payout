@@ -16,7 +16,7 @@
 
 void append(SB *sb, char *s);
 char *toString(SB *sb);
-void dispose(SB **sb, int freeStrings);
+void dispose(SB **sb);
 void error(char *msg);
 void growPtrList(SB *sb);
 void *getMem(int nBytes);
@@ -37,7 +37,11 @@ void append(SB *sb, char *s) {
 		error("Null pointer passed for argument 's' in SB.append()!"); /* Abort */
 	if (sb->count == sb->capacity)
 		growPtrList(sb);
-	sb->ptrList[sb->count++] = s;
+
+	char *copy_of_s=NULL;
+	asprintf(&copy_of_s, "%s", s);
+
+	sb->ptrList[sb->count++] = copy_of_s;
 }
 
 /* Catenate all strings and return result */
@@ -57,13 +61,14 @@ char *toString(SB *sb) {
 /* Delete this StringBuffer object and free all memory */
 /* Argument 'freeStrings' controls whether the individual append()ed strings will be freed */
 /* Note: The argument 'sb' is the ADDRESS of the POINTER to a StringBuffer structure */
-void dispose(SB **sb, int freeStrings) {
+void dispose(SB **sb) {
 	if (!sb || !*sb || !(*sb)->ptrList)
 		return; /* TODO: Decide if should abort here or take other action */
-	if (freeStrings) {
-		for (int i = 0; i < (*sb)->count; ++i)
-			free((*sb)->ptrList[i]);
-	}
+
+	// free all the strings allocated in append
+	for (int i = 0; i < (*sb)->count; ++i)
+		free((*sb)->ptrList[i]);
+
 	free((*sb)->ptrList);
 	free(*sb);
 	*sb = 0; /* Set value of pointer to zero */

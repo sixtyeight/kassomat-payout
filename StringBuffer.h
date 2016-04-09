@@ -14,7 +14,7 @@ struct StringBuffer {
     char **ptrList;                               /* Array of char * pointers added w/ append() */
     void (*append) ( SB *sb, char *s );           /* The append() function pointer              */
     char * (*toString) ( SB *sb );                /* The toString() function pointer            */
-    void (*dispose) ( SB **sb, int freeStrings ); /* The dispose() function pointer             */
+    void (*dispose) ( SB **sb ); /* The dispose() function pointer             */
 };
 
 /* Only quasi-public function - remainder wrapped in StringBuffer struct members */
