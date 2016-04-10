@@ -1602,15 +1602,13 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 
 	int j = 0;
 
-	// amount to keep
+	// minimum requested value to float
 	for (i = 0; i < 2; i++)
-		sspC->CommandData[++j] = value >> (i * 8);
+		sspC->CommandData[++j] = 100 >> (i * 8); // min 1 euro
 
-	// payout
-	sspC->CommandData[++j] = 0;
-	sspC->CommandData[++j] = 0;
-	sspC->CommandData[++j] = 0;
-	sspC->CommandData[++j] = 0;
+	// amount to keep for payout
+	for (i = 0; i < 4; i++)
+		sspC->CommandData[++j] = value >> (i * 8) ;
 
 	for (i = 0; i < 3; i++)
 		sspC->CommandData[++j] = cc[i];
