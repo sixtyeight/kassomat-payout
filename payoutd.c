@@ -796,6 +796,24 @@ void mc_handle_events_hopper(struct m_device *device,
 					"PUBLISH hopper-event {\"event\":\"dispensed\",\"amount\":%ld}",
 					poll->events[i].data1);
 			break;
+		case SSP_POLL_FLOATING:
+			asprintf(&response,
+					"{\"event\":\"floating\",\"amount\":%ld,\"cc\":\"%s\"}",
+					poll->events[i].data1, poll->events[i].cc);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s",
+					response);
+			free(response);
+			break;
+		case SSP_POLL_FLOATED:
+			asprintf(&response,
+					"{\"event\":\"floated\",\"amount\":%ld,\"cc\":\"%s\"}",
+					poll->events[i].data1, poll->events[i].cc);
+			redisAsyncCommand(db, NULL, NULL, "PUBLISH hopper-event %s",
+					response);
+			free(response);
+			break;
+
+
 		case SSP_POLL_CASHBOX_PAID:
 			asprintf(&response,
 					"{\"event\":\"cashbox paid\",\"amount\":%ld,\"cc\":\"%s\"}",
