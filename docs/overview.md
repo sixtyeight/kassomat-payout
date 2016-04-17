@@ -58,6 +58,10 @@ message will be published to the ``response`` topic.
 
 ``{"event":"reading"}``
 
+``{"event":"floating","amount":%ld,"cc":"%s"}``
+
+``{"event":"floated","amount":%ld,"cc":"%s"}``
+
 ``{"event":"dispensing","amount":%ld}``
 
 ``{"event":"dispensed","amount":%ld}``
@@ -161,6 +165,13 @@ message will be published to the ``response`` topic.
 ``{"event":"recalibrating"}``
 
 ### Messages for the 'hopper-request' topic
+
+``{"cmd":"get-firmware-version","msgId":"%s"}`` ##not commited##
+
+``{"cmd":"get-dataset-version","msgId":"%s"}`` ##not commited##
+
+``{"cmd":"set-denomination-level","amount":%ld,"level":%ld,msgId":"%s"}``
+
 ``{"cmd":"get-all-levels","msgId":"%s"}``
 
 ``{"cmd":"empty","msgId":"%s"}``
@@ -189,7 +200,31 @@ message will be published to the ``response`` topic.
   - ``{"correlId":"%s","error":"smart payout disabled"}``
   - ``{"correlId":"%s","error":"unknown"}``
 
+``{"cmd":"test-float","amount":%ld,"msgId":"%s"}``
+
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","error":"not enough value in smart payout"}``
+  - ``{"correlId":"%s","error":"can't pay exact amount"}``
+  - ``{"correlId":"%s","error":"smart payout busy"}``
+  - ``{"correlId":"%s","error":"smart payout disabled"}``
+  - ``{"correlId":"%s","error":"unknown"}``
+
+``{"cmd":"do-float","amount":%ld,"msgId":"%s"}``
+
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","error":"not enough value in smart payout"}``
+  - ``{"correlId":"%s","error":"can't pay exact amount"}``
+  - ``{"correlId":"%s","error":"smart payout busy"}``
+  - ``{"correlId":"%s","error":"smart payout disabled"}``
+  - ``{"correlId":"%s","error":"unknown"}``
+
 ### Messages for the 'validator-request' topic
+
+``{"cmd":"get-firmware-version","msgId":"%s"}`` ##not commited##
+
+``{"cmd":"get-dataset-version","msgId":"%s"}`` ##not commited##
+
+``{"cmd":"channel-security","msgId":"%s"}`` ##not commited##
 
 ``{"cmd":"empty","msgId":"%s"}``
 
@@ -253,6 +288,12 @@ message will be published to the ``response`` topic.
   - ``{"correlId":"%s","reason":"note payout"}``
   - ``{"correlId":"%s","reason":"unable to stack note"}``
   - ``{"correlId":"%s","reason":"undefined"}``
+
+### Known issues
+
+ - SSP command ``channel-security`` should return a value of 4 if a channel is inhibited, in reality it doesn't.
+ - SPP command ``get-firmware-version`` should return a "variable length string", in reality it doesn't.
+ - SSP command ``get-dataset-version`` should return a "variable length string", in reality it doesn't.
 
 [changeomatic]: https://github.com/sixtyeight/changeomatic/blob/master/src/main/java/at/metalab/changeomatic/ChangeomaticMain.java 
 [redis]: http://redis.io
