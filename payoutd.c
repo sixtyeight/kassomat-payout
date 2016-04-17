@@ -40,6 +40,7 @@ struct m_device {
 	int id;
 	char *name;
 	unsigned long long key;
+	unsigned char channelInhibits;
 
 	SSP_COMMAND sspC;
 	SSP6_SETUP_REQUEST_DATA setup_req;
@@ -84,6 +85,9 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json);
 SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc);
 SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value, const char *cc, const char option);
+SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
+SSP_RESPONSE_ENUM mc_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
@@ -100,6 +104,8 @@ static const char ROUTE_CASHBOX = 0x01;
 static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
+#define SSP_CMD_GET_FIRMWARE_VERSION 0x20
+#define SSP_CMD_GET_DATASET_VERSION 0x21
 #define SSP_CMD_GET_ALL_LEVELS 0x22
 #define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
 
@@ -247,6 +253,178 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				ssp6_enable(&device->sspC);
 			} else if (strstr(message, "\"cmd\":\"disable\"")) {
 				ssp6_disable(&device->sspC);
+			} else if(strstr(message, "\"cmd\":\"enable-channels\"")) {
+				const char *channelsToken = "\"channels\":\"";
+
+				char *channelsStart = strstr(message, channelsToken);
+				if (channelsStart == NULL) {
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, "{\"error\":\"channels missing\"}");
+					return;
+				}
+				channelsStart= channelsStart + strlen(channelsToken);
+				char *channelsEnd = strstr(channelsStart, "\"");
+				if (channelsEnd == NULL) {
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, "{\"error\":\"channels not a string\"}");
+					return;
+				}
+
+				// this will be updated and written back to the device state
+				// if the update succeeds
+				unsigned char currentChannelInhibits = device->channelInhibits;
+
+				char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+				unsigned char highChannels = 0xFF; // actually not in use
+
+				// 8 channels for now, set the bit to 1 for each requested channel
+				if(strstr(channels, "1") != NULL) {
+					currentChannelInhibits |= 1 << 0;
+				}
+				if(strstr(channels, "2") != NULL) {
+					currentChannelInhibits |= 1 << 1;
+				}
+				if(strstr(channels, "3") != NULL) {
+					currentChannelInhibits |= 1 << 2;
+				}
+				if(strstr(channels, "4") != NULL) {
+					currentChannelInhibits |= 1 << 3;
+				}
+				if(strstr(channels, "5") != NULL) {
+					currentChannelInhibits |= 1 << 4;
+				}
+				if(strstr(channels, "6") != NULL) {
+					currentChannelInhibits |= 1 << 5;
+				}
+				if(strstr(channels, "7") != NULL) {
+					currentChannelInhibits |= 1 << 6;
+				}
+				if(strstr(channels, "8") != NULL) {
+					currentChannelInhibits |= 1 << 7;
+				}
+
+				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, currentChannelInhibits, highChannels);
+
+				if(r == SSP_RESPONSE_OK) {
+					// okay, update the channelInhibits in the device structure with the new state
+					device->channelInhibits = currentChannelInhibits;
+
+					if(0) {
+						printf("enable-channels: current inhibits now: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
+								(currentChannelInhibits >> 0) & 1,
+								(currentChannelInhibits >> 1) & 1,
+								(currentChannelInhibits >> 2) & 1,
+								(currentChannelInhibits >> 3) & 1,
+								(currentChannelInhibits >> 4) & 1,
+								(currentChannelInhibits >> 5) & 1,
+								(currentChannelInhibits >> 6) & 1,
+								(currentChannelInhibits >> 7) & 1);
+					}
+
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"ok\"}",
+							msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				} else {
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"failed\"}",
+							msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				}
+
+				free(channels);
+			} else if(strstr(message, "\"cmd\":\"disable-channels\"")) {
+				const char *channelsToken = "\"channels\":\"";
+
+				char *channelsStart = strstr(message, channelsToken);
+				if (channelsStart == NULL) {
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, "{\"error\":\"channels missing\"}");
+					return;
+				}
+				channelsStart= channelsStart + strlen(channelsToken);
+				char *channelsEnd = strstr(channelsStart, "\"");
+				if (channelsEnd == NULL) {
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, "{\"error\":\"channels not a string\"}");
+					return;
+				}
+
+				// this will be updated and written back to the device state
+				// if the update succeeds
+				unsigned char currentChannelInhibits = device->channelInhibits;
+
+				char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+				unsigned char highChannels = 0xFF; // actually not in use
+
+				// 8 channels for now, set the bit to 0 for each requested channel
+				if(strstr(channels, "1") != NULL) {
+					currentChannelInhibits &= ~(1 << 0);
+				}
+				if(strstr(channels, "2") != NULL) {
+					currentChannelInhibits &= ~(1 << 1);
+				}
+				if(strstr(channels, "3") != NULL) {
+					currentChannelInhibits &= ~(1 << 2);
+				}
+				if(strstr(channels, "4") != NULL) {
+					currentChannelInhibits &= ~(1 << 3);
+				}
+				if(strstr(channels, "5") != NULL) {
+					currentChannelInhibits &= ~(1 << 4);
+				}
+				if(strstr(channels, "6") != NULL) {
+					currentChannelInhibits &= ~(1 << 5);
+				}
+				if(strstr(channels, "7") != NULL) {
+					currentChannelInhibits &= ~(1 << 6);
+				}
+				if(strstr(channels, "8") != NULL) {
+					currentChannelInhibits &= ~(1 << 7);
+				}
+
+				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, currentChannelInhibits, highChannels);
+
+				if(r == SSP_RESPONSE_OK) {
+					// okay, update the channelInhibits in the device structure with the new state
+					device->channelInhibits = currentChannelInhibits;
+
+					if(0) {
+						printf("disable-channels: current inhibits now: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
+								(currentChannelInhibits >> 0) & 1,
+								(currentChannelInhibits >> 1) & 1,
+								(currentChannelInhibits >> 2) & 1,
+								(currentChannelInhibits >> 3) & 1,
+								(currentChannelInhibits >> 4) & 1,
+								(currentChannelInhibits >> 5) & 1,
+								(currentChannelInhibits >> 6) & 1,
+								(currentChannelInhibits >> 7) & 1);
+					}
+
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"ok\"}",
+							msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				} else {
+					char *response = NULL;
+					asprintf(&response,
+							"{\"correlId\":\"%s\",\"result\":\"failed\"}",
+							msgId);
+					redisAsyncCommand(db, NULL, NULL, "PUBLISH %s %s",
+							response_topic, response);
+					free(response);
+				}
+
+				free(channels);
 			} else if(strstr(message, "\"cmd\":\"inhibit-channels\"")) {
 				const char *channelsToken = "\"channels\":\"";
 
@@ -427,6 +605,16 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 						free(response);
 					}
 				}
+			} else if (strstr(message, "\"cmd\":\"get-firmware-version\"")) {
+				char firmwareVersion[100] = { 0 };
+				mc_get_firmware_version(&device->sspC, &firmwareVersion[0]);
+				printf("firmwareVersion=%s\n", firmwareVersion);
+			} else if (strstr(message, "\"cmd\":\"get-dataset-version\"")) {
+				char datasetVersion[100] = { 0 };
+				mc_get_dataset_version(&device->sspC, &datasetVersion[0]);
+				printf("datasetVersion=%s\n", datasetVersion);
+			} else if (strstr(message, "\"cmd\":\"channel-security\"")) {
+				mc_ssp_channel_security_data(&device->sspC);
 			} else if (strstr(message, "\"cmd\":\"get-all-levels\"")) {
 				char *json = NULL;
 				mc_ssp_get_all_levels(&device->sspC, &json);
@@ -1202,8 +1390,10 @@ void mc_setup(struct m_metacash *metacash) {
 			ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY,
 					ROUTE_STORAGE); // 500 euro
 
-			// set the inhibits (enable all note acceptance)
-			if (ssp6_set_inhibits(&metacash->validator.sspC, 0xFF, 0xFF)
+			metacash->validator.channelInhibits = 0x0; // disable all channels
+
+			// set the inhibits in the hardware
+			if (ssp6_set_inhibits(&metacash->validator.sspC, metacash->validator.channelInhibits, 0x0)
 					!= SSP_RESPONSE_OK) {
 				printf("ERROR: Inhibits Failed\n");
 				return;
@@ -1321,7 +1511,7 @@ void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
 	SSP6_SETUP_REQUEST_DATA *setup_req = &device->setup_req;
 	unsigned int i = 0;
 
-	printf("initializing device (id=0x%02X)\n", sspC->SSPAddress);
+	printf("initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
 
 	//check device is present
 	if (ssp6_sync(sspC) != SSP_RESPONSE_OK) {
@@ -1350,12 +1540,19 @@ void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
 		return;
 	}
 
-	printf("firmware: %s\n", setup_req->FirmwareVersion);
+	//printf("firmware: %s\n", setup_req->FirmwareVersion);
 	printf("channels:\n");
 	for (i = 0; i < setup_req->NumberOfChannels; i++) {
 		printf("channel %d: %d %s\n", i + 1, setup_req->ChannelData[i].value,
 				setup_req->ChannelData[i].cc);
 	}
+
+	char version[100];
+	mc_get_firmware_version(sspC, &version[0]);
+	printf("full firmware version: %s\n", version);
+
+	mc_get_dataset_version(sspC, &version[0]);
+	printf("full dataset version : %s\n", version);
 
 	//enable the device
 	if (ssp6_enable(sspC) != SSP_RESPONSE_OK) {
@@ -1642,4 +1839,72 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
 	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = SSP_CMD_GET_FIRMWARE_VERSION;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+	if(resp == SSP_RESPONSE_OK) {
+		for(int i = 0; i < 16; i++) {
+			*(firmwareVersion + i) = sspC->ResponseData[1 + i];
+		}
+		*(firmwareVersion + 16) = 0;
+	}
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = SSP_CMD_GET_DATASET_VERSION;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+	if(resp == SSP_RESPONSE_OK) {
+		for(int i = 0; i < 8; i++) {
+			*(datasetVersion + i) = sspC->ResponseData[1 + i];
+		}
+		*(datasetVersion + 8) = 0;
+	}
+
+	return resp;
+}
+
+SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = SSP_CMD_CHANNEL_SECURITY;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+	if(resp == SSP_RESPONSE_OK) {
+		int numChannels = sspC->ResponseData[1];
+
+		printf("security status: numChannels=%d\n", numChannels);
+		printf("0 = unused, 1 = low, 2 = std, 3 = high, 4 = inhibited\n");
+		for(int i = 0; i < numChannels; i++) {
+			printf("security status: channel %d -> %d\n", 1 + i, sspC->ResponseData[2 + i]);
+		}
+
+		return resp;
+	} else {
+		return resp;
+	}
 }
