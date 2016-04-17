@@ -166,9 +166,9 @@ message will be published to the ``response`` topic.
 
 ### Messages for the 'hopper-request' topic
 
-``{"cmd":"get-firmware-version","msgId":"%s"}`` ##not commited##
+``{"cmd":"get-firmware-version","msgId":"%s"}``
 
-``{"cmd":"get-dataset-version","msgId":"%s"}`` ##not commited##
+``{"cmd":"get-dataset-version","msgId":"%s"}``
 
 ``{"cmd":"set-denomination-level","amount":%ld,"level":%ld,msgId":"%s"}``
 
@@ -220,11 +220,11 @@ message will be published to the ``response`` topic.
 
 ### Messages for the 'validator-request' topic
 
-``{"cmd":"get-firmware-version","msgId":"%s"}`` ##not commited##
+``{"cmd":"get-firmware-version","msgId":"%s"}``
 
-``{"cmd":"get-dataset-version","msgId":"%s"}`` ##not commited##
+``{"cmd":"get-dataset-version","msgId":"%s"}``
 
-``{"cmd":"channel-security","msgId":"%s"}`` ##not commited##
+``{"cmd":"channel-security","msgId":"%s"}``
 
 ``{"cmd":"empty","msgId":"%s"}``
 
@@ -250,7 +250,17 @@ message will be published to the ``response`` topic.
   - ``{"correlId":"%s","error":"smart payout disabled"}``
   - ``{"correlId":"%s","error":"unknown"}``
 
-``{"cmd":"inhibit-channels","channels":"%s","msgId":"%s"}``
+``{"cmd":"enable-channels","channels":"%s","msgId":"%s"}``
+
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","result":"failed"}``
+
+``{"cmd":"disable-channels","channels":"%s","msgId":"%s"}``
+
+  - ``{"correlId":"%s","result":"ok"}``
+  - ``{"correlId":"%s","result":"failed"}``
+
+``{"cmd":"inhibit-channels","channels":"%s","msgId":"%s"}`` (do not use for now, needs a fix)
 
   - ``{"correlId":"%s","result":"ok"}``
   - ``{"correlId":"%s","result":"failed"}``
