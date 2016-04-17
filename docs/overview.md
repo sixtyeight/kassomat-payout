@@ -305,6 +305,22 @@ message will be published to the ``response`` topic.
  - SPP command ``get-firmware-version`` should return a "variable length string", in reality it doesn't.
  - SSP command ``get-dataset-version`` should return a "variable length string", in reality it doesn't.
 
+### Libraries
+
+ - [Hiredis][hiredis]
+ - [libevent][libevent]
+ - [libuuid][libuuid]
+ - [SSP protocol example code from Innovative Technology][itl]
+
+### Hardware Documentation
+
+ - [Münzprüfer RM5 CC-Talk Dokumentation][rm5]
+ - [Innovative Technology Smart Hopper][itl-sh]
+ - [Innovative Technology NV200][itl-nv200]
+
+### udev rule
+``SUBSYSTEM=="tty" ATTRS{manufacturer}=="Innovative Technology LTD" SYMLINK+="kassomat"``
+
 [changeomatic]: https://github.com/sixtyeight/changeomatic/blob/master/src/main/java/at/metalab/changeomatic/ChangeomaticMain.java 
 [redis]: http://redis.io
 [mep-rr]: https://en.wikipedia.org/wiki/Request%E2%80%93response
@@ -312,5 +328,10 @@ message will be published to the ``response`` topic.
 [itl-ssp]: http://innovative-technology.com/product-files/ssp-manuals/smart-payout-ssp-manual.pdf
 [itl-hw-hopper]: http://innovative-technology.com/products/products-main/210-smart-hopper
 [itl-hw-validator]: http://innovative-technology.com/products/products-main/90-nv200
-
-
+[hiredis]: https://github.com/redis/hiredis
+[libevent]: http://libevent.org
+[libuuid]: http://sourceforge.net/projects/libuuid
+[itl]: http://innovative-technology.com
+[itl-sh]: http://innovative-technology.com/images/pdocuments/manuals/SMART_Hopper_manual_set.zip
+[itl-nv200]: http://innovative-technology.com/images/pdocuments/manuals/NV200%20manual%20set.zip
+[rm5]: http://www.aus.at/download/RM5german.pdf
