@@ -66,38 +66,35 @@ struct m_metacash {
 	struct m_device validator; // nv200 + smart payout devices
 };
 
-// mc_ssp_* : metacash ssp functions (cash hardware, low level)
-int mc_ssp_open_serial_device(struct m_metacash *metacash);
-void mc_ssp_close_serial_device(struct m_metacash *metacash);
-void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId);
-void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
-		struct m_device *device);
+// mcSsp* : ssp helper functions
+int mcSspOpenSerialDevice(struct m_metacash *metacash);
+void mcSspCloseSerialDevice(struct m_metacash *metacash);
+void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId);
+void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key, struct m_device *device);
+void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
+
+// mc_ssp_* : ssp functions (each of these relate directly to a command specified in the ssp protocol)
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC);
-void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash);
-SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
-		unsigned char g, unsigned char b, unsigned char non_volatile);
+SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r, unsigned char g, unsigned char b, unsigned char non_volatile);
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
-SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
-		unsigned char *reason);
+SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason);
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json);
 SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc);
 SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value, const char *cc, const char option);
 SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC);
-SSP_RESPONSE_ENUM mc_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
-SSP_RESPONSE_ENUM mc_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
+SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
+SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
 
 // metacash
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
-void mc_setup(struct m_metacash *metacash);
+void mcSetup(struct m_metacash *metacash);
 
 // cash hardware result parsing
-void mc_handle_events_hopper(struct m_device *device,
-		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
-void mc_handle_events_validator(struct m_device *device,
-		struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+void mcHandleEventsHopper(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+void mcHandleEventsValidator(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 
 static const char *CURRENCY = "EUR";
 static const char ROUTE_CASHBOX = 0x01;
@@ -128,7 +125,7 @@ void hardwareWaitTime() {
 	nanosleep(&ts, NULL);
 }
 
-redisAsyncContext* mc_connect_redis(struct m_metacash *metacash) {
+redisAsyncContext* mcConnectRedis(struct m_metacash *metacash) {
 	redisAsyncContext *conn = redisAsyncConnect(metacash->redisHost,
 			metacash->redisPort);
 
@@ -154,8 +151,8 @@ void cbPollEvent(int fd, short event, void *privdata) {
 		return;
 	}
 
-	mc_ssp_poll_device(&metacash->hopper, metacash);
-	mc_ssp_poll_device(&metacash->validator, metacash);
+	mcSspPollDevice(&metacash->hopper, metacash);
+	mcSspPollDevice(&metacash->validator, metacash);
 }
 
 void cbCheckQuit(int fd, short event, void *privdata) {
@@ -192,8 +189,7 @@ int publishHopperEvent(redisAsyncContext *c, char *format, ...) {
 
 	va_end(varags);
 
-	redisAsyncCommand(c, NULL, NULL, "PUBLISH %s %s",
-			"hopper-event", reply);
+	redisAsyncCommand(c, NULL, NULL, "PUBLISH %s %s", "hopper-event", reply);
 
 	free(reply);
 
@@ -216,7 +212,7 @@ int publishValidatorEvent(redisAsyncContext *c, char *format, ...) {
 	return 0;
 }
 
-int reply_with(redisAsyncContext *c, char *topic, char *format, ...) {
+int replyWith(redisAsyncContext *c, char *topic, char *format, ...) {
 	va_list varags;
 	va_start(varags, format);
 
@@ -232,20 +228,20 @@ int reply_with(redisAsyncContext *c, char *topic, char *format, ...) {
 	return 0;
 }
 
-int reply_ok(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
-	return reply_with(c, topic,
+int replyOk(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
+	return replyWith(c, topic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"ok\"}",
 			responseMsgId, msgId);
 }
 
-int reply_failed(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
-	return reply_with(c, topic,
+int replyFailed(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
+	return replyWith(c, topic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"failed\"}",
 			responseMsgId, msgId);
 }
 
-int reply_accepted(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
-	return reply_with(c, topic,
+int replyAccepted(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
+	return replyWith(c, topic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"accepted\":\"true\"}",
 			responseMsgId, msgId);
 }
@@ -282,13 +278,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			const char *msgIdToken = "\"msgId\":\"";
 			char *msgIdStart = strstr(message, msgIdToken);
 			if (msgIdStart == NULL) {
-				reply_with(db, response_topic, "{\"error\":\"msgId missing\"}");
+				replyWith(db, response_topic, "{\"error\":\"msgId missing\"}");
 				return;
 			}
 			msgIdStart = msgIdStart + strlen(msgIdToken);
 			char *msgIdEnd = strstr(msgIdStart, "\"");
 			if (msgIdEnd == NULL) {
-				reply_with(db, response_topic, "{\"error\":\"msgId not a string\"}");
+				replyWith(db, response_topic, "{\"error\":\"msgId not a string\"}");
 				return;
 			}
 
@@ -304,36 +300,36 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					responseMsgId);
 
 			if(isCommand(message, "quit")) {
-				reply_ok(db, response_topic, responseMsgId, msgId);
+				replyOk(db, response_topic, responseMsgId, msgId);
 				receivedSignal = 1;
 			} else if (isCommand(message, "empty")) {
 				mc_ssp_empty(&device->sspC);
 
-				reply_accepted(db, response_topic, responseMsgId, msgId);
+				replyAccepted(db, response_topic, responseMsgId, msgId);
 			} else if (isCommand(message, "smart-empty")) {
 				mc_ssp_smart_empty(&device->sspC);
 
-				reply_accepted(db, response_topic, responseMsgId, msgId);
+				replyAccepted(db, response_topic, responseMsgId, msgId);
 			} else if (isCommand(message, "enable")) {
 				ssp6_enable(&device->sspC);
 
-				reply_accepted(db, response_topic, responseMsgId, msgId);
+				replyAccepted(db, response_topic, responseMsgId, msgId);
 			} else if (isCommand(message, "disable")) {
 				ssp6_disable(&device->sspC);
 
-				reply_accepted(db, response_topic, responseMsgId, msgId);
+				replyAccepted(db, response_topic, responseMsgId, msgId);
 			} else if(isCommand(message, "enable-channels")) {
 				const char *channelsToken = "\"channels\":\"";
 
 				char *channelsStart = strstr(message, channelsToken);
 				if (channelsStart == NULL) {
-					reply_with(db, response_topic, "{\"error\":\"channels missing\"}");
+					replyWith(db, response_topic, "{\"error\":\"channels missing\"}");
 					return;
 				}
 				channelsStart= channelsStart + strlen(channelsToken);
 				char *channelsEnd = strstr(channelsStart, "\"");
 				if (channelsEnd == NULL) {
-					reply_with(db, response_topic, "{\"error\":\"channels not a string\"}");
+					replyWith(db, response_topic, "{\"error\":\"channels not a string\"}");
 					return;
 				}
 
@@ -388,9 +384,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 								(currentChannelInhibits >> 7) & 1);
 					}
 
-					reply_ok(db, response_topic, responseMsgId, msgId);
+					replyOk(db, response_topic, responseMsgId, msgId);
 				} else {
-					reply_failed(db, response_topic, responseMsgId, msgId);
+					replyFailed(db, response_topic, responseMsgId, msgId);
 				}
 
 				free(channels);
@@ -399,13 +395,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				char *channelsStart = strstr(message, channelsToken);
 				if (channelsStart == NULL) {
-					reply_with(db, response_topic, "{\"error\":\"channels missing\"}");
+					replyWith(db, response_topic, "{\"error\":\"channels missing\"}");
 					return;
 				}
 				channelsStart= channelsStart + strlen(channelsToken);
 				char *channelsEnd = strstr(channelsStart, "\"");
 				if (channelsEnd == NULL) {
-					reply_with(db, response_topic, "{\"error\":\"channels not a string\"}");
+					replyWith(db, response_topic, "{\"error\":\"channels not a string\"}");
 					return;
 				}
 
@@ -460,9 +456,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 								(currentChannelInhibits >> 7) & 1);
 					}
 
-					reply_ok(db, response_topic, responseMsgId, msgId);
+					replyOk(db, response_topic, responseMsgId, msgId);
 				} else {
-					reply_failed(db, response_topic, responseMsgId, msgId);
+					replyFailed(db, response_topic, responseMsgId, msgId);
 				}
 
 				free(channels);
@@ -471,13 +467,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				char *channelsStart = strstr(message, channelsToken);
 				if (channelsStart == NULL) {
-					reply_with(db, response_topic, "{\"error\":\"channels missing\"}");
+					replyWith(db, response_topic, "{\"error\":\"channels missing\"}");
 					return;
 				}
 				channelsStart= channelsStart + strlen(channelsToken);
 				char *channelsEnd = strstr(channelsStart, "\"");
 				if (channelsEnd == NULL) {
-					reply_with(db, response_topic, "{\"error\":\"channels not a string\"}");
+					replyWith(db, response_topic, "{\"error\":\"channels not a string\"}");
 					return;
 				}
 
@@ -514,9 +510,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, lowChannels, highChannels);
 
 				if(r == SSP_RESPONSE_OK) {
-					reply_ok(db, response_topic, responseMsgId, msgId);
+					replyOk(db, response_topic, responseMsgId, msgId);
 				} else {
-					reply_failed(db, response_topic, responseMsgId, msgId);
+					replyFailed(db, response_topic, responseMsgId, msgId);
 				}
 
 				free(channels);
@@ -560,9 +556,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 							error = "unknown";
 							break;
 						}
-						reply_with(db, response_topic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
+						replyWith(db, response_topic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
 					} else {
-						reply_ok(db, response_topic, responseMsgId, msgId);
+						replyOk(db, response_topic, responseMsgId, msgId);
 					}
 				}
 			} else if (isCommand(message, "test-payout")
@@ -604,25 +600,25 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 							break;
 						}
 
-						reply_with(db, response_topic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
+						replyWith(db, response_topic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
 					} else {
-						reply_ok(db, response_topic, responseMsgId, msgId);
+						replyOk(db, response_topic, responseMsgId, msgId);
 					}
 				}
 			} else if (isCommand(message, "get-firmware-version")) {
 				char firmwareVersion[100] = { 0 };
-				mc_get_firmware_version(&device->sspC, &firmwareVersion[0]);
-				reply_with(db, response_topic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, firmwareVersion);
+				mc_ssp_get_firmware_version(&device->sspC, &firmwareVersion[0]);
+				replyWith(db, response_topic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, firmwareVersion);
 			} else if (isCommand(message, "get-dataset-version")) {
 				char datasetVersion[100] = { 0 };
-				mc_get_dataset_version(&device->sspC, &datasetVersion[0]);
-				reply_with(db, response_topic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, datasetVersion);
+				mc_ssp_get_dataset_version(&device->sspC, &datasetVersion[0]);
+				replyWith(db, response_topic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, datasetVersion);
 			} else if (isCommand(message, "channel-security")) {
 				mc_ssp_channel_security_data(&device->sspC);
 			} else if (isCommand(message, "get-all-levels")) {
 				char *json = NULL;
 				mc_ssp_get_all_levels(&device->sspC, &json);
-				reply_with(db, response_topic,"{\"correlId\":\"%s\",\"levels\":[%s]}", msgId, json);
+				replyWith(db, response_topic,"{\"correlId\":\"%s\",\"levels\":[%s]}", msgId, json);
 				free(json);
 			} else if (isCommand(message, "set-denomination-level")) {
 				char *levelToken = "\"level\":";
@@ -658,9 +654,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				}
 
 				if (mc_ssp_set_denomination_level(&device->sspC, amount, level, "EUR") == SSP_RESPONSE_OK) {
-					reply_ok(db, response_topic, responseMsgId, msgId);
+					replyOk(db, response_topic, responseMsgId, msgId);
 				} else {
-					reply_failed(db, response_topic, responseMsgId, msgId);
+					replyFailed(db, response_topic, responseMsgId, msgId);
 				}
 			} else if (isCommand(message, "last-reject-note")) {
 				unsigned char reasonCode;
@@ -760,15 +756,15 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 						break;
 					}
 					if (reason != NULL) {
-						reply_with(db, response_topic, "{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}", msgId, reason, reasonCode);
+						replyWith(db, response_topic, "{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}", msgId, reason, reasonCode);
 					} else {
-						reply_with(db, response_topic, "{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}", msgId, reasonCode);
+						replyWith(db, response_topic, "{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}", msgId, reasonCode);
 					}
 				} else {
-					reply_with(db, response_topic, "{\"timeout\":\"last reject note\"}");
+					replyWith(db, response_topic, "{\"timeout\":\"last reject note\"}");
 				}
 			} else {
-				reply_with(db, response_topic, "{\"error\":\"cmd missing\"}", message);
+				replyWith(db, response_topic, "{\"error\":\"cmd missing\"}", message);
 			}
 
 			free(msgId);
@@ -838,12 +834,12 @@ int main(int argc, char *argv[]) {
 	metacash.hopper.id = 0x10; // 0X10 -> Smart Hopper ("Münzer")
 	metacash.hopper.name = "Mr. Coin";
 	metacash.hopper.key = DEFAULT_KEY;
-	metacash.hopper.parsePoll = mc_handle_events_hopper;
+	metacash.hopper.parsePoll = mcHandleEventsHopper;
 
 	metacash.validator.id = 0x00; // 0x00 -> Smart Payout NV200 ("Scheiner")
 	metacash.validator.name = "Ms. Note";
 	metacash.validator.key = DEFAULT_KEY;
-	metacash.validator.parsePoll = mc_handle_events_validator;
+	metacash.validator.parsePoll = mcHandleEventsValidator;
 
 	// parse the command line arguments
 	if (parseCmdLine(argc, argv, &metacash)) {
@@ -854,14 +850,14 @@ int main(int argc, char *argv[]) {
 			metacash.redisHost, metacash.redisPort, metacash.serialDevice);
 
 	// open the serial device
-	if (mc_ssp_open_serial_device(&metacash) == 0) {
+	if (mcSspOpenSerialDevice(&metacash) == 0) {
 		metacash.deviceAvailable = 1;
 	} else {
 		syslog(LOG_ALERT, "cash hardware unavailable");
 	}
 
 	// setup the ssp commands, configure and initialize the hardware
-	mc_setup(&metacash);
+	mcSetup(&metacash);
 
 	syslog(LOG_NOTICE, "metacash open for business :D");
 
@@ -870,7 +866,7 @@ int main(int argc, char *argv[]) {
 	syslog(LOG_NOTICE, "exiting");
 
 	if (metacash.deviceAvailable) {
-		mc_ssp_close_serial_device(&metacash);
+		mcSspCloseSerialDevice(&metacash);
 	}
 
 	// cleanup stuff before exiting.
@@ -919,7 +915,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 }
 
 // business stuff
-void mc_handle_events_hopper(struct m_device *device,
+void mcHandleEventsHopper(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *db = metacash->db;
 
@@ -1037,7 +1033,7 @@ void mc_handle_events_hopper(struct m_device *device,
 	}
 }
 
-void mc_handle_events_validator(struct m_device *device,
+void mcHandleEventsValidator(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *db = metacash->db;
 
@@ -1188,13 +1184,13 @@ void mc_handle_events_validator(struct m_device *device,
 	}
 }
 
-void mc_setup(struct m_metacash *metacash) {
+void mcSetup(struct m_metacash *metacash) {
 	// initialize libEvent
 	metacash->eventBase = event_base_new();
 
 	// connect to redis
-	metacash->db = mc_connect_redis(metacash); // establish connection for persistence
-	metacash->pubSub = mc_connect_redis(metacash); // establich connection for pub/sub
+	metacash->db = mcConnectRedis(metacash); // establish connection for persistence
+	metacash->pubSub = mcConnectRedis(metacash); // establich connection for pub/sub
 
 	// setup redis
 	if (metacash->db && metacash->pubSub) {
@@ -1221,15 +1217,15 @@ void mc_setup(struct m_metacash *metacash) {
 	// try to initialize the hardware only if we successfully have opened the device
 	if (metacash->deviceAvailable) {
 		// prepare the device structures
-		mc_ssp_setup_command(&metacash->validator.sspC, metacash->validator.id);
-		mc_ssp_setup_command(&metacash->hopper.sspC, metacash->hopper.id);
+		mcSspSetupCommand(&metacash->validator.sspC, metacash->validator.id);
+		mcSspSetupCommand(&metacash->hopper.sspC, metacash->hopper.id);
 
 		// initialize the devices
 		printf("\n");
-		mc_ssp_initialize_device(&metacash->validator.sspC,
+		mcSspInitializeDevice(&metacash->validator.sspC,
 				metacash->validator.key, &metacash->validator);
 		printf("\n");
-		mc_ssp_initialize_device(&metacash->hopper.sspC, metacash->hopper.key,
+		mcSspInitializeDevice(&metacash->hopper.sspC, metacash->hopper.key,
 				&metacash->hopper);
 		printf("\n");
 
@@ -1303,7 +1299,7 @@ void mc_setup(struct m_metacash *metacash) {
 	}
 }
 
-int mc_ssp_open_serial_device(struct m_metacash *metacash) {
+int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	// open the serial device
 	printf("opening serial device: %s\n", metacash->serialDevice);
 
@@ -1337,11 +1333,11 @@ int mc_ssp_open_serial_device(struct m_metacash *metacash) {
 	return 0;
 }
 
-void mc_ssp_close_serial_device(struct m_metacash *metacash) {
+void mcSspCloseSerialDevice(struct m_metacash *metacash) {
 	close_ssp_port();
 }
 
-void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash) {
+void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 	SSP_POLL_DATA6 poll;
 
 	hardwareWaitTime();
@@ -1377,7 +1373,7 @@ void mc_ssp_poll_device(struct m_device *device, struct m_metacash *metacash) {
 	}
 }
 
-void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
+void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
 	SSP6_SETUP_REQUEST_DATA *setup_req = &device->setup_req;
 	unsigned int i = 0;
@@ -1419,10 +1415,10 @@ void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
 	}
 
 	char version[100];
-	mc_get_firmware_version(sspC, &version[0]);
+	mc_ssp_get_firmware_version(sspC, &version[0]);
 	printf("full firmware version: %s\n", version);
 
-	mc_get_dataset_version(sspC, &version[0]);
+	mc_ssp_get_dataset_version(sspC, &version[0]);
 	printf("full dataset version : %s\n", version);
 
 	//enable the device
@@ -1434,7 +1430,7 @@ void mc_ssp_initialize_device(SSP_COMMAND *sspC, unsigned long long key,
 	printf("device has been successfully initialized\n");
 }
 
-void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId) {
+void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId) {
 	sspC->SSPAddress = deviceId;
 	sspC->Timeout = 1000;
 	sspC->EncryptionStatus = NO_ENCRYPTION;
@@ -1712,7 +1708,7 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 	return resp;
 }
 
-SSP_RESPONSE_ENUM mc_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion) {
+SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_GET_FIRMWARE_VERSION;
 
@@ -1733,7 +1729,7 @@ SSP_RESPONSE_ENUM mc_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersi
 	return resp;
 }
 
-SSP_RESPONSE_ENUM mc_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion) {
+SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_GET_DATASET_VERSION;
 
