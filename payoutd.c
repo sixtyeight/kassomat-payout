@@ -43,7 +43,7 @@ struct m_device {
 	unsigned char channelInhibits;
 
 	SSP_COMMAND sspC;
-	SSP6_SETUP_REQUEST_DATA setup_req;
+	SSP6_SETUP_REQUEST_DATA sspSetupReq;
 	void (*parsePoll) (struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 };
 
@@ -261,13 +261,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			char *topic = reply->element[1]->str;
 			struct m_device *device = NULL;
 
-			char *response_topic = NULL;
+			char *responseTopic = NULL;
 			if (strcmp(topic, "validator-request") == 0) {
 				device = &m->validator;
-				response_topic = "validator-response";
+				responseTopic = "validator-response";
 			} else if (strcmp(topic, "hopper-request") == 0) {
 				device = &m->hopper;
-				response_topic = "hopper-response";
+				responseTopic = "hopper-response";
 			} else {
 				return;
 			}
@@ -277,13 +277,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			const char *msgIdToken = "\"msgId\":\"";
 			char *msgIdStart = strstr(message, msgIdToken);
 			if (msgIdStart == NULL) {
-				replyWith(publishCtx, response_topic, "{\"error\":\"msgId missing\"}");
+				replyWith(publishCtx, responseTopic, "{\"error\":\"msgId missing\"}");
 				return;
 			}
 			msgIdStart = msgIdStart + strlen(msgIdToken);
 			char *msgIdEnd = strstr(msgIdStart, "\"");
 			if (msgIdEnd == NULL) {
-				replyWith(publishCtx, response_topic, "{\"error\":\"msgId not a string\"}");
+				replyWith(publishCtx, responseTopic, "{\"error\":\"msgId not a string\"}");
 				return;
 			}
 
@@ -299,36 +299,36 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					responseMsgId);
 
 			if(isCommand(message, "quit")) {
-				replyOk(publishCtx, response_topic, responseMsgId, msgId);
+				replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 				receivedSignal = 1;
 			} else if (isCommand(message, "empty")) {
 				mc_ssp_empty(&device->sspC);
 
-				replyAccepted(publishCtx, response_topic, responseMsgId, msgId);
+				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
 			} else if (isCommand(message, "smart-empty")) {
 				mc_ssp_smart_empty(&device->sspC);
 
-				replyAccepted(publishCtx, response_topic, responseMsgId, msgId);
+				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
 			} else if (isCommand(message, "enable")) {
 				ssp6_enable(&device->sspC);
 
-				replyAccepted(publishCtx, response_topic, responseMsgId, msgId);
+				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
 			} else if (isCommand(message, "disable")) {
 				ssp6_disable(&device->sspC);
 
-				replyAccepted(publishCtx, response_topic, responseMsgId, msgId);
+				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
 			} else if(isCommand(message, "enable-channels")) {
 				const char *channelsToken = "\"channels\":\"";
 
 				char *channelsStart = strstr(message, channelsToken);
 				if (channelsStart == NULL) {
-					replyWith(publishCtx, response_topic, "{\"error\":\"channels missing\"}");
+					replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
 					return;
 				}
 				channelsStart= channelsStart + strlen(channelsToken);
 				char *channelsEnd = strstr(channelsStart, "\"");
 				if (channelsEnd == NULL) {
-					replyWith(publishCtx, response_topic, "{\"error\":\"channels not a string\"}");
+					replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
 					return;
 				}
 
@@ -383,9 +383,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 								(currentChannelInhibits >> 7) & 1);
 					}
 
-					replyOk(publishCtx, response_topic, responseMsgId, msgId);
+					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 				} else {
-					replyFailed(publishCtx, response_topic, responseMsgId, msgId);
+					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
 				}
 
 				free(channels);
@@ -394,13 +394,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				char *channelsStart = strstr(message, channelsToken);
 				if (channelsStart == NULL) {
-					replyWith(publishCtx, response_topic, "{\"error\":\"channels missing\"}");
+					replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
 					return;
 				}
 				channelsStart= channelsStart + strlen(channelsToken);
 				char *channelsEnd = strstr(channelsStart, "\"");
 				if (channelsEnd == NULL) {
-					replyWith(publishCtx, response_topic, "{\"error\":\"channels not a string\"}");
+					replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
 					return;
 				}
 
@@ -455,9 +455,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 								(currentChannelInhibits >> 7) & 1);
 					}
 
-					replyOk(publishCtx, response_topic, responseMsgId, msgId);
+					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 				} else {
-					replyFailed(publishCtx, response_topic, responseMsgId, msgId);
+					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
 				}
 
 				free(channels);
@@ -466,13 +466,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				char *channelsStart = strstr(message, channelsToken);
 				if (channelsStart == NULL) {
-					replyWith(publishCtx, response_topic, "{\"error\":\"channels missing\"}");
+					replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
 					return;
 				}
 				channelsStart= channelsStart + strlen(channelsToken);
 				char *channelsEnd = strstr(channelsStart, "\"");
 				if (channelsEnd == NULL) {
-					replyWith(publishCtx, response_topic, "{\"error\":\"channels not a string\"}");
+					replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
 					return;
 				}
 
@@ -509,9 +509,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, lowChannels, highChannels);
 
 				if(r == SSP_RESPONSE_OK) {
-					replyOk(publishCtx, response_topic, responseMsgId, msgId);
+					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 				} else {
-					replyFailed(publishCtx, response_topic, responseMsgId, msgId);
+					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
 				}
 
 				free(channels);
@@ -554,9 +554,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 							error = "unknown";
 							break;
 						}
-						replyWith(publishCtx, response_topic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
+						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
 					} else {
-						replyOk(publishCtx, response_topic, responseMsgId, msgId);
+						replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 					}
 				}
 			} else if (isCommand(message, "test-payout")
@@ -597,25 +597,25 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 							break;
 						}
 
-						replyWith(publishCtx, response_topic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
+						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
 					} else {
-						replyOk(publishCtx, response_topic, responseMsgId, msgId);
+						replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 					}
 				}
 			} else if (isCommand(message, "get-firmware-version")) {
 				char firmwareVersion[100] = { 0 };
 				mc_ssp_get_firmware_version(&device->sspC, &firmwareVersion[0]);
-				replyWith(publishCtx, response_topic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, firmwareVersion);
+				replyWith(publishCtx, responseTopic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, firmwareVersion);
 			} else if (isCommand(message, "get-dataset-version")) {
 				char datasetVersion[100] = { 0 };
 				mc_ssp_get_dataset_version(&device->sspC, &datasetVersion[0]);
-				replyWith(publishCtx, response_topic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, datasetVersion);
+				replyWith(publishCtx, responseTopic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, datasetVersion);
 			} else if (isCommand(message, "channel-security")) {
 				mc_ssp_channel_security_data(&device->sspC);
 			} else if (isCommand(message, "get-all-levels")) {
 				char *json = NULL;
 				mc_ssp_get_all_levels(&device->sspC, &json);
-				replyWith(publishCtx, response_topic,"{\"correlId\":\"%s\",\"levels\":[%s]}", msgId, json);
+				replyWith(publishCtx, responseTopic,"{\"correlId\":\"%s\",\"levels\":[%s]}", msgId, json);
 				free(json);
 			} else if (isCommand(message, "set-denomination-level")) {
 				char *levelToken = "\"level\":";
@@ -651,9 +651,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				}
 
 				if (mc_ssp_set_denomination_level(&device->sspC, amount, level, "EUR") == SSP_RESPONSE_OK) {
-					replyOk(publishCtx, response_topic, responseMsgId, msgId);
+					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
 				} else {
-					replyFailed(publishCtx, response_topic, responseMsgId, msgId);
+					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
 				}
 			} else if (isCommand(message, "last-reject-note")) {
 				unsigned char reasonCode;
@@ -753,15 +753,15 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 						break;
 					}
 					if (reason != NULL) {
-						replyWith(publishCtx, response_topic, "{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}", msgId, reason, reasonCode);
+						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}", msgId, reason, reasonCode);
 					} else {
-						replyWith(publishCtx, response_topic, "{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}", msgId, reasonCode);
+						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}", msgId, reasonCode);
 					}
 				} else {
-					replyWith(publishCtx, response_topic, "{\"timeout\":\"last reject note\"}");
+					replyWith(publishCtx, responseTopic, "{\"timeout\":\"last reject note\"}");
 				}
 			} else {
-				replyWith(publishCtx, response_topic, "{\"error\":\"cmd missing\"}", message);
+				replyWith(publishCtx, responseTopic, "{\"error\":\"cmd missing\"}", message);
 			}
 
 			free(msgId);
@@ -1046,7 +1046,7 @@ void mcHandleEventsValidator(struct m_device *device,
 			if (poll->events[i].data1 > 0) {
 				// The note which was in escrow has been accepted
 				unsigned long amount =
-						device->setup_req.ChannelData[poll->events[i].data1 - 1].value
+						device->sspSetupReq.ChannelData[poll->events[i].data1 - 1].value
 								* 100;
 				publishValidatorEvent(publishCtx, "{\"event\":\"read\",\"amount\":%ld,\"channel\":%ld}",
 						amount, poll->events[i].data1);
@@ -1067,7 +1067,7 @@ void mcHandleEventsValidator(struct m_device *device,
 			// The note which was in escrow has been accepted
 		{
 			unsigned long amount =
-					device->setup_req.ChannelData[poll->events[i].data1 - 1].value
+					device->sspSetupReq.ChannelData[poll->events[i].data1 - 1].value
 							* 100;
 			publishValidatorEvent(publishCtx, "{\"event\":\"credit\",\"amount\":%ld,\"channel\":%ld}",
 					amount, poll->events[i].data1);
@@ -1226,10 +1226,10 @@ void mcSetup(struct m_metacash *metacash) {
 		{
 			// SMART Hopper configuration
 			int i;
-			for (i = 0; i < metacash->hopper.setup_req.NumberOfChannels; i++) {
+			for (i = 0; i < metacash->hopper.sspSetupReq.NumberOfChannels; i++) {
 				ssp6_set_coinmech_inhibits(&metacash->hopper.sspC,
-						metacash->hopper.setup_req.ChannelData[i].value,
-						metacash->hopper.setup_req.ChannelData[i].cc, ENABLED);
+						metacash->hopper.sspSetupReq.ChannelData[i].value,
+						metacash->hopper.sspSetupReq.ChannelData[i].cc, ENABLED);
 			}
 		}
 
@@ -1271,7 +1271,7 @@ void mcSetup(struct m_metacash *metacash) {
 
 			//enable the payout unit
 			if (ssp6_enable_payout(&metacash->validator.sspC,
-					metacash->validator.setup_req.UnitType)
+					metacash->validator.sspSetupReq.UnitType)
 					!= SSP_RESPONSE_OK) {
 				printf("ERROR: Enable Payout Failed\n");
 				return;
@@ -1369,7 +1369,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
-	SSP6_SETUP_REQUEST_DATA *setup_req = &device->setup_req;
+	SSP6_SETUP_REQUEST_DATA *sspSetupReq = &device->sspSetupReq;
 	unsigned int i = 0;
 
 	printf("initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
@@ -1396,16 +1396,16 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 	printf("host protocol verified\n");
 
 	// Collect some information about the device
-	if (ssp6_setup_request(sspC, setup_req) != SSP_RESPONSE_OK) {
+	if (ssp6_setup_request(sspC, sspSetupReq) != SSP_RESPONSE_OK) {
 		printf("ERROR: Setup Request Failed\n");
 		return;
 	}
 
 	//printf("firmware: %s\n", setup_req->FirmwareVersion);
 	printf("channels:\n");
-	for (i = 0; i < setup_req->NumberOfChannels; i++) {
-		printf("channel %d: %d %s\n", i + 1, setup_req->ChannelData[i].value,
-				setup_req->ChannelData[i].cc);
+	for (i = 0; i < sspSetupReq->NumberOfChannels; i++) {
+		printf("channel %d: %d %s\n", i + 1, sspSetupReq->ChannelData[i].value,
+				sspSetupReq->ChannelData[i].cc);
 	}
 
 	char version[100];
