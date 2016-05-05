@@ -20,3 +20,7 @@
 /.project
 /BasicValidator
 /payoutd
+
+# Doxygen
+/html
+/latex
