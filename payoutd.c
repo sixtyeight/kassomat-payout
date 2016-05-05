@@ -115,12 +115,21 @@ void validatorEventHandler(struct m_device *device, struct m_metacash *metacash,
 
 static const char *CURRENCY = "EUR";
 
+/**
+ * set by the signalHandler function and checked in cbCheckQuit.
+ */
 int receivedSignal = 0;
 
+/**
+ * Signal handler
+ */
 void signalHandler(int signal) {
 	receivedSignal = signal;
 }
 
+/**
+ * Waits for 300ms each time called.
+ */
 void hardwareWaitTime() {
 	struct timespec ts;
 	ts.tv_sec = 0;
@@ -128,6 +137,9 @@ void hardwareWaitTime() {
 	nanosleep(&ts, NULL);
 }
 
+/**
+ * Create a new redisAsyncContext.
+ */
 redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 	redisAsyncContext *conn = redisAsyncConnect(metacash->redisHost,
 			metacash->redisPort);
@@ -147,6 +159,9 @@ redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 	return conn;
 }
 
+/**
+ * Callback function for libEvent triggered "Poll" event.
+ */
 void cbPollEvent(int fd, short event, void *privdata) {
 	struct m_metacash *metacash = privdata;
 	if (metacash->deviceAvailable == 0) {
@@ -158,6 +173,9 @@ void cbPollEvent(int fd, short event, void *privdata) {
 	mcSspPollDevice(&metacash->validator, metacash);
 }
 
+/**
+ * Callback function for libEvent triggered "CheckQuit" event.
+ */
 void cbCheckQuit(int fd, short event, void *privdata) {
 	if (receivedSignal != 0) {
 		syslog(LOG_NOTICE, "received signal. going to exit event loop.");
@@ -168,11 +186,16 @@ void cbCheckQuit(int fd, short event, void *privdata) {
 	}
 }
 
+/**
+ * Callback function triggered by an incoming message in the "metacash" topic.
+ */
 void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
 	// empty for now
 }
 
-/* isCommand: Test if the message contains the "cmd":"(command)" property */
+/**
+ * Test if the message contains the "cmd":"(command)" property
+ */
 int isCommand(char *message, const char *command) {
 	char *commandPattern;
 
@@ -183,6 +206,9 @@ int isCommand(char *message, const char *command) {
 	return found != 0;
 }
 
+/**
+ * Helper function to publish a message to the "hopper-event" topic.
+ */
 int publishHopperEvent(redisAsyncContext *c, char *format, ...) {
 	va_list varags;
 	va_start(varags, format);
@@ -199,6 +225,9 @@ int publishHopperEvent(redisAsyncContext *c, char *format, ...) {
 	return 0;
 }
 
+/**
+ * Helper function to publish a message to the "validator-event" topic.
+ */
 int publishValidatorEvent(redisAsyncContext *c, char *format, ...) {
 	va_list varags;
 	va_start(varags, format);
@@ -215,6 +244,9 @@ int publishValidatorEvent(redisAsyncContext *c, char *format, ...) {
 	return 0;
 }
 
+/**
+ * Helper function to publish a message to the given topic.
+ */
 int replyWith(redisAsyncContext *c, char *topic, char *format, ...) {
 	va_list varags;
 	va_start(varags, format);
@@ -231,24 +263,37 @@ int replyWith(redisAsyncContext *c, char *topic, char *format, ...) {
 	return 0;
 }
 
+/**
+ * Helper function to publish "result=ok" to the given topic.
+ */
 int replyOk(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
 	return replyWith(c, topic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"ok\"}",
 			responseMsgId, msgId);
 }
 
+/**
+ * Helper function to publish "result=failed" to the given topic.
+ */
 int replyFailed(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
 	return replyWith(c, topic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"failed\"}",
 			responseMsgId, msgId);
 }
 
+/**
+ * Helper function to publish "accepted=true" to the given topic.
+ */
 int replyAccepted(redisAsyncContext *c, char *topic, char *responseMsgId, char *msgId) {
 	return replyWith(c, topic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"accepted\":\"true\"}",
 			responseMsgId, msgId);
 }
 
+/**
+ * Callback function triggered by an incoming message in either
+ * the "hopper-request" or "validator-request" topic.
+ */
 void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 	if (r == NULL)
 		return;
@@ -773,6 +818,10 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 	}
 }
 
+/**
+ * Callback function triggered by the redis client on connecting with
+ * the "publish" context.
+ */
 void cbConnectPublishContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "cbConnectPublishContext: redis error: %s\n", c->errstr);
@@ -781,6 +830,10 @@ void cbConnectPublishContext(const redisAsyncContext *c, int status) {
 	fprintf(stderr, "cbConnectPublishContext: connected to redis\n");
 }
 
+/**
+ * Callback function triggered by the redis client on disconnecting with
+ * the "publish" context.
+ */
 void cbDisconnectPublishContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "cbDisconnectPublishContext: redis error: %s\n", c->errstr);
@@ -789,6 +842,10 @@ void cbDisconnectPublishContext(const redisAsyncContext *c, int status) {
 	fprintf(stderr, "cbDisconnectPublishContext: disconnected from redis\n");
 }
 
+/**
+ * Callback function triggered by the redis client on connecting with
+ * the "subscribe" context.
+ */
 void cbConnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "cbConnectSubscribeContext - redis error: %s\n", c->errstr);
@@ -803,6 +860,10 @@ void cbConnectSubscribeContext(const redisAsyncContext *c, int status) {
 	redisAsyncCommand(cNotConst, cbOnRequestMessage, NULL, "SUBSCRIBE hopper-request");
 }
 
+/**
+ * Callback function triggered by the redis client on disconnecting with
+ * the "subscribe" context.
+ */
 void cbDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
 		fprintf(stderr, "cbDisconnectSubscribeContext - redis error: %s\n", c->errstr);
@@ -811,6 +872,9 @@ void cbDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	fprintf(stderr, "cbDisconnectSubscribeContext - disconnected from redis\n");
 }
 
+/**
+ * Entry point of the daemon.
+ */
 int main(int argc, char *argv[]) {
 	// setup logging via syslog
 	setlogmask(LOG_UPTO(LOG_NOTICE));
@@ -882,6 +946,9 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+/**
+ * Parse the command line arguments.
+ */
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
@@ -913,6 +980,10 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 }
 
 // business stuff
+
+/**
+ *  Callback function used for publishing events reported by the Hopper hardware.
+ */
 void hopperEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *publishCtx = metacash->redisPublishCtx;
@@ -1031,6 +1102,9 @@ void hopperEventHandler(struct m_device *device,
 	}
 }
 
+/**
+ *  Callback function used for publishing events reported by the Validator hardware.
+ */
 void validatorEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *publishCtx = metacash->redisPublishCtx;
@@ -1182,6 +1256,9 @@ void validatorEventHandler(struct m_device *device,
 	}
 }
 
+/**
+ * Initializes and configures redis, libevent and the hardware.
+ */
 void setup(struct m_metacash *metacash) {
 	// initialize libEvent
 	metacash->eventBase = event_base_new();
@@ -1297,6 +1374,9 @@ void setup(struct m_metacash *metacash) {
 	}
 }
 
+/**
+ * Opens the given serial device.
+ */
 int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	// open the serial device
 	printf("opening serial device: %s\n", metacash->serialDevice);
@@ -1331,10 +1411,16 @@ int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	return 0;
 }
 
+/**
+ * Closes the given serial device.
+ */
 void mcSspCloseSerialDevice(struct m_metacash *metacash) {
 	close_ssp_port();
 }
 
+/**
+ * Issues a poll command to the hardware and dispatches the response to the event handler function of the device.
+ */
 void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 	SSP_POLL_DATA6 poll;
 
@@ -1371,6 +1457,9 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 	}
 }
 
+/**
+ * Initializes the ITL hardware
+ */
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
 	SSP6_SETUP_REQUEST_DATA *sspSetupReq = &device->sspSetupReq;
@@ -1428,6 +1517,9 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 	printf("device has been successfully initialized\n");
 }
 
+/**
+ * Initializes the SSP_COMMAND structure.
+ */
 void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId) {
 	sspC->SSPAddress = deviceId;
 	sspC->Timeout = 1000;
@@ -1436,6 +1528,9 @@ void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId) {
 	sspC->BaudRate = 9600;
 }
 
+/**
+ * Implements the "LAST REJECT NOTE" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 		unsigned char *reason) {
 	sspC->CommandDataLength = 1;
@@ -1454,6 +1549,9 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 	return resp;
 }
 
+/**
+ * Implements the "DISPLAY ON" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_DISPLAY_ON;
@@ -1471,6 +1569,9 @@ SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 	return resp;
 }
 
+/**
+ * Implements the "DISPLAY OFF" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_DISPLAY_OFF;
@@ -1488,6 +1589,9 @@ SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 	return resp;
 }
 
+/**
+ * Implements the "SET REFILL MODE" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 9;
 	sspC->CommandData[0] = SSP_CMD_SET_REFILL_MODE;
@@ -1514,6 +1618,9 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	return resp;
 }
 
+/**
+ * Implements the "EMPTY" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_EMPTY;
@@ -1531,6 +1638,9 @@ SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 	return resp;
 }
 
+/**
+ * Implements the "SMART EMPTY" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_SMART_EMPTY;
@@ -1548,6 +1658,9 @@ SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 	return resp;
 }
 
+/**
+ * Implements the "CONFIGURE BEZEL" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile) {
 	sspC->CommandDataLength = 5;
@@ -1570,6 +1683,9 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 	return resp;
 }
 
+/**
+ * Implements the "SET DENOMINATION LEVEL" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc) {
 	sspC->CommandDataLength = 10;
 	sspC->CommandData[0] = SSP_CMD_SET_DENOMINATION_LEVEL;
@@ -1597,7 +1713,9 @@ SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, i
 	return resp;
 }
 
-// get all the current levels in the device
+/**
+ * Implements the "GET ALL LEVELS" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_GET_ALL_LEVELS;
@@ -1673,6 +1791,9 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 	return resp;
 }
 
+/**
+ * Implements the "FLOAT" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 		const char *cc, const char option) {
 	int i;
@@ -1706,6 +1827,9 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 	return resp;
 }
 
+/**
+ * Implements the "GET FIRMWARE VERSION" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_GET_FIRMWARE_VERSION;
@@ -1727,6 +1851,9 @@ SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareV
 	return resp;
 }
 
+/**
+ * Implements the "GET DATASET VERSION" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_GET_DATASET_VERSION;
@@ -1748,6 +1875,9 @@ SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVer
 	return resp;
 }
 
+/**
+ * Implements the "CHANNEL SECURITY DATA" command from the SSP Protocol.
+ */
 SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_CHANNEL_SECURITY;
