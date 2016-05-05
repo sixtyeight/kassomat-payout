@@ -738,7 +738,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					case 0x16: // Slot fail 1
 						reason = "slot fail 1";
 						break;
-					case SSP_CMD_LAST_REJECT_NOTE: // Slot fail 2
+					case 0x17: // Slot fail 2
 						reason = "slot fail 2";
 						break;
 					case 0x18: // Lens over-sample
@@ -1504,7 +1504,7 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	sspC->CommandData[4] = 0x11;
 	sspC->CommandData[5] = 0x01;
 	sspC->CommandData[6] = 0x01;
-	sspC->CommandData[7] = SSP_CMD_SMART_EMPTY;
+	sspC->CommandData[7] = 0x52;
 	sspC->CommandData[8] = 0xF5;
 
 	//CHECK FOR TIMEOUT
