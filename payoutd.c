@@ -1,3 +1,7 @@
+/** @file payoutd.c
+ *  @brief Main source file for the payoutd daemon.
+ */
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -104,16 +108,16 @@ static const char ROUTE_STORAGE = 0x00;
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
 // metacash
-int mcParseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
-void mcSetup(struct m_metacash *metacash);
-void mcHopperEventHandler(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
-void mcValidatorEventHandler(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
+void setup(struct m_metacash *metacash);
+void hopperEventHandler(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+void validatorEventHandler(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 
 static const char *CURRENCY = "EUR";
 
 int receivedSignal = 0;
 
-void interrupt(int signal) {
+void signalHandler(int signal) {
 	receivedSignal = signal;
 }
 
@@ -124,7 +128,7 @@ void hardwareWaitTime() {
 	nanosleep(&ts, NULL);
 }
 
-redisAsyncContext* mcConnectRedis(struct m_metacash *metacash) {
+redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 	redisAsyncContext *conn = redisAsyncConnect(metacash->redisHost,
 			metacash->redisPort);
 
@@ -810,12 +814,12 @@ void cbDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 int main(int argc, char *argv[]) {
 	// setup logging via syslog
 	setlogmask(LOG_UPTO(LOG_NOTICE));
-	openlog("metacashd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+	openlog("payoutd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 	syslog(LOG_NOTICE, "Program started by User %d", getuid());
 
 	// register interrupt handler for signals
-	signal(SIGTERM, interrupt);
-	signal(SIGINT, interrupt);
+	signal(SIGTERM, signalHandler);
+	signal(SIGINT, signalHandler);
 
 	struct m_metacash metacash;
 	metacash.deviceAvailable = 0;
@@ -828,15 +832,15 @@ int main(int argc, char *argv[]) {
 	metacash.hopper.id = 0x10; // 0X10 -> Smart Hopper ("Münzer")
 	metacash.hopper.name = "Mr. Coin";
 	metacash.hopper.key = DEFAULT_KEY;
-	metacash.hopper.eventHandlerFn = mcHopperEventHandler;
+	metacash.hopper.eventHandlerFn = hopperEventHandler;
 
 	metacash.validator.id = 0x00; // 0x00 -> Smart Payout NV200 ("Scheiner")
 	metacash.validator.name = "Ms. Note";
 	metacash.validator.key = DEFAULT_KEY;
-	metacash.validator.eventHandlerFn = mcValidatorEventHandler;
+	metacash.validator.eventHandlerFn = validatorEventHandler;
 
 	// parse the command line arguments
-	if (mcParseCmdLine(argc, argv, &metacash)) {
+	if (parseCmdLine(argc, argv, &metacash)) {
 		return 1;
 	}
 
@@ -851,7 +855,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// setup the ssp commands, configure and initialize the hardware
-	mcSetup(&metacash);
+	setup(&metacash);
 
 	syslog(LOG_NOTICE, "metacash open for business :D");
 
@@ -878,7 +882,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-int mcParseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
+int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	char c;
@@ -909,7 +913,7 @@ int mcParseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 }
 
 // business stuff
-void mcHopperEventHandler(struct m_device *device,
+void hopperEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *publishCtx = metacash->redisPublishCtx;
 
@@ -1027,7 +1031,7 @@ void mcHopperEventHandler(struct m_device *device,
 	}
 }
 
-void mcValidatorEventHandler(struct m_device *device,
+void validatorEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *publishCtx = metacash->redisPublishCtx;
 
@@ -1178,13 +1182,13 @@ void mcValidatorEventHandler(struct m_device *device,
 	}
 }
 
-void mcSetup(struct m_metacash *metacash) {
+void setup(struct m_metacash *metacash) {
 	// initialize libEvent
 	metacash->eventBase = event_base_new();
 
 	// connect to redis
-	metacash->redisPublishCtx = mcConnectRedis(metacash); // establish connection for publishing
-	metacash->redisSubscribeCtx = mcConnectRedis(metacash); // establich connection for subscribing
+	metacash->redisPublishCtx = connectRedis(metacash); // establish connection for publishing
+	metacash->redisSubscribeCtx = connectRedis(metacash); // establich connection for subscribing
 
 	// setup redis
 	if (metacash->redisPublishCtx && metacash->redisSubscribeCtx) {
