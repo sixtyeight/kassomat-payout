@@ -108,6 +108,12 @@ static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 #define SSP_CMD_GET_DATASET_VERSION 0x21
 #define SSP_CMD_GET_ALL_LEVELS 0x22
 #define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
+#define SSP_CMD_LAST_REJECT_NOTE 0x17
+#define SSP_CMD_CONFIGURE_BEZEL 0x54
+#define SSP_CMD_SMART_EMPTY 0x52
+#define SSP_CMD_SET_REFILL_MODE 0x30
+#define SSP_CMD_DISPLAY_OFF 0x4
+#define SSP_CMD_DISPLAY_ON 0x3
 
 int receivedSignal = 0;
 
@@ -732,7 +738,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					case 0x16: // Slot fail 1
 						reason = "slot fail 1";
 						break;
-					case 0x17: // Slot fail 2
+					case SSP_CMD_LAST_REJECT_NOTE: // Slot fail 2
 						reason = "slot fail 2";
 						break;
 					case 0x18: // Lens over-sample
@@ -1439,7 +1445,7 @@ void mc_ssp_setup_command(SSP_COMMAND *sspC, int deviceId) {
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 		unsigned char *reason) {
 	sspC->CommandDataLength = 1;
-	sspC->CommandData[0] = 0x17;
+	sspC->CommandData[0] = SSP_CMD_LAST_REJECT_NOTE;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
@@ -1456,7 +1462,7 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
-	sspC->CommandData[0] = 0x3;
+	sspC->CommandData[0] = SSP_CMD_DISPLAY_ON;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
@@ -1473,7 +1479,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
-	sspC->CommandData[0] = 0x4;
+	sspC->CommandData[0] = SSP_CMD_DISPLAY_OFF;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
@@ -1490,7 +1496,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 9;
-	sspC->CommandData[0] = 0x30;
+	sspC->CommandData[0] = SSP_CMD_SET_REFILL_MODE;
 
 	sspC->CommandData[1] = 0x05;
 	sspC->CommandData[2] = 0x81;
@@ -1498,7 +1504,7 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	sspC->CommandData[4] = 0x11;
 	sspC->CommandData[5] = 0x01;
 	sspC->CommandData[6] = 0x01;
-	sspC->CommandData[7] = 0x52;
+	sspC->CommandData[7] = SSP_CMD_SMART_EMPTY;
 	sspC->CommandData[8] = 0xF5;
 
 	//CHECK FOR TIMEOUT
@@ -1533,7 +1539,7 @@ SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
-	sspC->CommandData[0] = 0x52;
+	sspC->CommandData[0] = SSP_CMD_SMART_EMPTY;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
@@ -1551,7 +1557,7 @@ SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile) {
 	sspC->CommandDataLength = 5;
-	sspC->CommandData[0] = 0x54;
+	sspC->CommandData[0] = SSP_CMD_CONFIGURE_BEZEL;
 	sspC->CommandData[1] = r;
 	sspC->CommandData[2] = g;
 	sspC->CommandData[3] = b;
