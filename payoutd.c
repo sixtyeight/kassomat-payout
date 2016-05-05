@@ -514,13 +514,13 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				}
 
 				free(channels);
-			} else if(isCommand(message, "test-float")
+			} else if (isCommand(message, "test-float")
 					|| isCommand(message, "do-float")) {
 				// basically a copy of do/test-payout ...
 
 				int payoutOption = 0;
 
-				if (strstr(message, "\"cmd\":\"do-float\"")) {
+				if (isCommand(message, "do-float")) {
 					payoutOption = SSP6_OPTION_BYTE_DO;
 				} else {
 					payoutOption = SSP6_OPTION_BYTE_TEST;
