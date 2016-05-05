@@ -44,7 +44,7 @@ struct m_device {
 
 	SSP_COMMAND sspC;
 	SSP6_SETUP_REQUEST_DATA sspSetupReq;
-	void (*parsePoll) (struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+	void (*eventHandlerFn) (struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 };
 
 struct m_metacash {
@@ -72,7 +72,18 @@ void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId);
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key, struct m_device *device);
 void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 
-// mc_ssp_* : ssp functions (each of these relate directly to a command specified in the ssp protocol)
+// mc_ssp_* : ssp magic values and functions (each of these relate directly to a command specified in the ssp protocol)
+#define SSP_CMD_GET_FIRMWARE_VERSION 0x20
+#define SSP_CMD_GET_DATASET_VERSION 0x21
+#define SSP_CMD_GET_ALL_LEVELS 0x22
+#define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
+#define SSP_CMD_LAST_REJECT_NOTE 0x17
+#define SSP_CMD_CONFIGURE_BEZEL 0x54
+#define SSP_CMD_SMART_EMPTY 0x52
+#define SSP_CMD_SET_REFILL_MODE 0x30
+#define SSP_CMD_DISPLAY_OFF 0x4
+#define SSP_CMD_DISPLAY_ON 0x3
+
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r, unsigned char g, unsigned char b, unsigned char non_volatile);
@@ -87,29 +98,18 @@ SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
 SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
 
-// metacash
-int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
-void mcSetup(struct m_metacash *metacash);
-
-// cash hardware result parsing
-void mcHandleEventsHopper(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
-void mcHandleEventsValidator(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
-
-static const char *CURRENCY = "EUR";
 static const char ROUTE_CASHBOX = 0x01;
 static const char ROUTE_STORAGE = 0x00;
+
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
-#define SSP_CMD_GET_FIRMWARE_VERSION 0x20
-#define SSP_CMD_GET_DATASET_VERSION 0x21
-#define SSP_CMD_GET_ALL_LEVELS 0x22
-#define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
-#define SSP_CMD_LAST_REJECT_NOTE 0x17
-#define SSP_CMD_CONFIGURE_BEZEL 0x54
-#define SSP_CMD_SMART_EMPTY 0x52
-#define SSP_CMD_SET_REFILL_MODE 0x30
-#define SSP_CMD_DISPLAY_OFF 0x4
-#define SSP_CMD_DISPLAY_ON 0x3
+// metacash
+int mcParseCmdLine(int argc, char *argv[], struct m_metacash *metacash);
+void mcSetup(struct m_metacash *metacash);
+void mcHopperEventHandler(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+void mcValidatorEventHandler(struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
+
+static const char *CURRENCY = "EUR";
 
 int receivedSignal = 0;
 
@@ -828,15 +828,15 @@ int main(int argc, char *argv[]) {
 	metacash.hopper.id = 0x10; // 0X10 -> Smart Hopper ("Münzer")
 	metacash.hopper.name = "Mr. Coin";
 	metacash.hopper.key = DEFAULT_KEY;
-	metacash.hopper.parsePoll = mcHandleEventsHopper;
+	metacash.hopper.eventHandlerFn = mcHopperEventHandler;
 
 	metacash.validator.id = 0x00; // 0x00 -> Smart Payout NV200 ("Scheiner")
 	metacash.validator.name = "Ms. Note";
 	metacash.validator.key = DEFAULT_KEY;
-	metacash.validator.parsePoll = mcHandleEventsValidator;
+	metacash.validator.eventHandlerFn = mcValidatorEventHandler;
 
 	// parse the command line arguments
-	if (parseCmdLine(argc, argv, &metacash)) {
+	if (mcParseCmdLine(argc, argv, &metacash)) {
 		return 1;
 	}
 
@@ -878,7 +878,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
+int mcParseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	char c;
@@ -909,7 +909,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 }
 
 // business stuff
-void mcHandleEventsHopper(struct m_device *device,
+void mcHopperEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *publishCtx = metacash->redisPublishCtx;
 
@@ -1027,7 +1027,7 @@ void mcHandleEventsHopper(struct m_device *device,
 	}
 }
 
-void mcHandleEventsValidator(struct m_device *device,
+void mcValidatorEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
 	redisAsyncContext *publishCtx = metacash->redisPublishCtx;
 
@@ -1250,7 +1250,7 @@ void mcSetup(struct m_metacash *metacash) {
 			ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY,
 					ROUTE_CASHBOX); // 10 euro
 			ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY,
-					ROUTE_STORAGE); // 20 euro
+					ROUTE_CASHBOX); // 20 euro
 			ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY,
 					ROUTE_STORAGE); // 50 euro
 			ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY,
@@ -1360,7 +1360,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 		if (poll.event_count > 0) {
 			printf("parsing poll response from \"%s\" now (%d events)\n",
 					device->name, poll.event_count);
-			device->parsePoll(device, metacash, &poll);
+			device->eventHandlerFn(device, metacash, &poll);
 		} else {
 			//printf("polling \"%s\" returned no events\n", device->name);
 		}
