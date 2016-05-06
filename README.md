@@ -1,6 +1,6 @@
-# SMART Payout Module
+# Payout Module
 
-The SMART Payout Module  acts as a thin layer
+The Payout Module  acts as a thin layer
 around the rather low-level [SSP protocol][itl-ssp]
 from Innovative Technology used for communication with the [SMART Hopper][itl-hw-hopper]
 and [NV200 Banknote validator][itl-hw-validator] devices.
