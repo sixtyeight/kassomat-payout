@@ -162,7 +162,7 @@ redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 /**
  * Callback function for libEvent triggered "Poll" event.
  */
-void cbPollEvent(int fd, short event, void *privdata) {
+void cbOnPollEvent(int fd, short event, void *privdata) {
 	struct m_metacash *metacash = privdata;
 	if (metacash->deviceAvailable == 0) {
 		// return immediately if we have no actual hardware to poll
@@ -176,7 +176,7 @@ void cbPollEvent(int fd, short event, void *privdata) {
 /**
  * Callback function for libEvent triggered "CheckQuit" event.
  */
-void cbCheckQuit(int fd, short event, void *privdata) {
+void cbOnCheckQuitEvent(int fd, short event, void *privdata) {
 	if (receivedSignal != 0) {
 		syslog(LOG_NOTICE, "received signal. going to exit event loop.");
 
@@ -1284,7 +1284,7 @@ void setup(struct m_metacash *metacash) {
 		interval.tv_sec = 0;
 		interval.tv_usec = 500000;
 
-		event_set(&metacash->evCheckQuit, 0, EV_PERSIST, cbCheckQuit, metacash); // provide metacash in privdata
+		event_set(&metacash->evCheckQuit, 0, EV_PERSIST, cbOnCheckQuitEvent, metacash); // provide metacash in privdata
 		event_base_set(metacash->eventBase, &metacash->evCheckQuit);
 		evtimer_add(&metacash->evCheckQuit, &interval);
 	}
@@ -1368,7 +1368,7 @@ void setup(struct m_metacash *metacash) {
 		interval.tv_sec = 1;
 		interval.tv_usec = 0;
 
-		event_set(&metacash->evPoll, 0, EV_PERSIST, cbPollEvent, metacash); // provide metacash in privdata
+		event_set(&metacash->evPoll, 0, EV_PERSIST, cbOnPollEvent, metacash); // provide metacash in privdata
 		event_base_set(metacash->eventBase, &metacash->evPoll);
 		evtimer_add(&metacash->evPoll, &interval);
 	}
