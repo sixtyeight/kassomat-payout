@@ -77,8 +77,8 @@ struct m_command {
 	json_t *jsonMessage;
 
 	char *command;
+	char *correlId;
 	char *msgId;
-	char *responseMsgId;
 	char *responseTopic;
 
 	struct m_device *device;
@@ -274,19 +274,19 @@ int replyWith(char *topic, char *format, ...) {
 }
 
 int replyWithPropertyError(struct m_command *cmd, char *name) {
-	char *responseMsgId = "unknown";
-	if(cmd->responseMsgId) {
-		responseMsgId = cmd->responseMsgId;
+	char *msgId = "unknown";
+	if(cmd->msgId) {
+		msgId = cmd->msgId;
 	}
 
 	char *correlId = "unknown";
-	if(cmd->msgId) {
-		correlId = cmd->msgId;
+	if(cmd->correlId) {
+		correlId = cmd->correlId;
 	}
 
 	return replyWith(cmd->responseTopic,
 			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"error\":\"Property '%s' missing or of wrong type\"}",
-			responseMsgId,
+			msgId,
 			correlId,
 			name);
 }
@@ -294,8 +294,8 @@ int replyWithPropertyError(struct m_command *cmd, char *name) {
 int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
 	if(response == SSP_RESPONSE_OK) {
 		return replyWith(cmd->responseTopic, "{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"ok\"}",
-				cmd->responseMsgId,
-				cmd->msgId);
+				cmd->msgId,
+				cmd->correlId);
 	} else {
 		char *errorMsg;
 
@@ -335,8 +335,8 @@ int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
 		}
 
 		return replyWith(cmd->responseTopic, "{\"msgId\":\"%s\",\"correlId\":\"%s\",\"sspError\":\"%s\"}",
-				cmd->responseMsgId,
 				cmd->msgId,
+				cmd->correlId,
 				errorMsg);
 
 	}
@@ -407,7 +407,7 @@ void handlePayout(struct m_command *cmd) {
 			break;
 		}
 
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", cmd->msgId, error);
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", cmd->correlId, error);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
@@ -457,7 +457,7 @@ void handleFloat(struct m_command *cmd) {
 			break;
 		}
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}",
-				cmd->msgId, error);
+				cmd->correlId, error);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
@@ -700,7 +700,7 @@ void handleGetAllLevels(struct m_command *cmd) {
 	SSP_RESPONSE_ENUM resp = mc_ssp_get_all_levels(&cmd->device->sspC, &json);
 
 	if(resp == SSP_RESPONSE_OK) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->msgId, json);
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->correlId, json);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
@@ -717,7 +717,7 @@ void handleGetFirmwareVersion(struct m_command *cmd) {
 	SSP_RESPONSE_ENUM resp = mc_ssp_get_firmware_version(&cmd->device->sspC, &firmwareVersion[0]);
 
 	if(resp == SSP_RESPONSE_OK) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}", cmd->msgId, firmwareVersion);
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}", cmd->correlId, firmwareVersion);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
@@ -733,7 +733,7 @@ void handleGetDatasetVersion(struct m_command *cmd) {
 
 	if(resp == SSP_RESPONSE_OK) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}",
-				cmd->msgId, datasetVersion);
+				cmd->correlId, datasetVersion);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
@@ -845,7 +845,7 @@ void handleLastRejectNote(struct m_command *cmd) {
 
 		replyWith(cmd->responseTopic,
 				"{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}",
-				cmd->msgId, reason, reasonCode);
+				cmd->correlId, reason, reasonCode);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
@@ -878,6 +878,10 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			char *topic = reply->element[1]->str;
 			struct m_command cmd;
 
+			cmd.msgId = NULL;
+			cmd.correlId = NULL;
+			cmd.command = NULL;
+
 			// decide to which topic the response should be sent to
 			if (strcmp(topic, "validator-request") == 0) {
 				cmd.device = &m->validator;
@@ -893,9 +897,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// generate a new 'msgId' for the response itself
 			uuid_t uuid;
 			uuid_generate_time_safe(uuid);
-			char responseMsgId[37] = { 0 }; // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
-			uuid_unparse_lower(uuid, responseMsgId);
-			cmd.responseMsgId = (char *) &responseMsgId; // points to a local variable. only valid until this block is exited!
+			char msgId[37] = { 0 }; // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
+			uuid_unparse_lower(uuid, msgId);
+			cmd.msgId = (char *) &msgId; // points to a local variable. only valid until this block is exited!
 
 			char *message = reply->element[2]->str;
 
@@ -912,13 +916,14 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			}
 
 			// extract the 'msgId' property (used as the 'correlId' in a response)
-		    json_t *jMsgId = json_object_get(cmd.jsonMessage, "msgId");
+			// this will be the 'correlId' used in replies.
+			json_t *jMsgId = json_object_get(cmd.jsonMessage, "msgId");
 		    if(! json_is_string(jMsgId)) {
 		    	replyWithPropertyError(&cmd, "msgId");
 		    	json_decref(cmd.jsonMessage);
 		    	return;
 		    } else {
-				cmd.msgId = (char *) json_string_value(jMsgId); // cast for now
+				cmd.correlId = (char *) json_string_value(jMsgId); // cast for now
 		    }
 
 		    // extract the 'cmd' property
@@ -938,52 +943,54 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// generic error response.
 
 			printf("processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
-					cmd.command, cmd.msgId, topic, cmd.device->name);
+					cmd.command, cmd.correlId, topic, cmd.device->name);
 
 			if(isCommand(&cmd, "quit")) {
 				handleQuit(&cmd);
-			}
-
-			// commands below need the actual hardware
-
-			if(! m->deviceAvailable) {
-				// TODO: an unknown command without the actual hardware will also receive this response :-/
-				printf("rejecting command from msgId='%s', hardware unavailable!\n", cmd.msgId);
-				replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.msgId);
+			} else if(isCommand(&cmd, "test")) {
+				replyWithSspResponse(&cmd, SSP_RESPONSE_OK);
 			} else {
-				if(isCommand(&cmd, "empty")) {
-					handleEmpty(&cmd);
-				} else if (isCommand(&cmd, "smart-empty")) {
-					handleSmartEmpty(&cmd);
-				} else if (isCommand(&cmd, "enable")) {
-					handleEnable(&cmd);
-				} else if (isCommand(&cmd, "disable")) {
-					handleDisable(&cmd);
-				} else if(isCommand(&cmd, "enable-channels")) {
-					handleEnableChannels(&cmd);
-				} else if(isCommand(&cmd, "disable-channels")) {
-					handleDisableChannels(&cmd);
-				} else if(isCommand(&cmd, "inhibit-channels")) {
-					handleInhibitChannels(&cmd);
-				} else if (isCommand(&cmd, "test-float") || isCommand(&cmd, "do-float")) {
-					handleFloat(&cmd);
-				} else if (isCommand(&cmd, "test-payout") || isCommand(&cmd, "do-payout")) {
-					handlePayout(&cmd);
-				} else if (isCommand(&cmd, "get-firmware-version")) {
-					handleGetFirmwareVersion(&cmd);
-				} else if (isCommand(&cmd, "get-dataset-version")) {
-					handleGetDatasetVersion(&cmd);
-				} else if (isCommand(&cmd, "channel-security-data")) {
-					handleChannelSecurityData(&cmd);
-				} else if (isCommand(&cmd, "get-all-levels")) {
-					handleGetAllLevels(&cmd);
-				} else if (isCommand(&cmd, "set-denomination-level")) {
-					handleSetDenominationLevels(&cmd);
-				} else if (isCommand(&cmd, "last-reject-note")) {
-					handleLastRejectNote(&cmd);
+				// commands in here need the actual hardware
+
+				if(! m->deviceAvailable) {
+					// TODO: an unknown command without the actual hardware will also receive this response :-/
+					printf("rejecting cmd='%s' from msgId='%s', hardware unavailable!\n", cmd.command, cmd.correlId);
+					replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.correlId);
 				} else {
-					replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
-							cmd.msgId, cmd.command);
+					if(isCommand(&cmd, "empty")) {
+						handleEmpty(&cmd);
+					} else if (isCommand(&cmd, "smart-empty")) {
+						handleSmartEmpty(&cmd);
+					} else if (isCommand(&cmd, "enable")) {
+						handleEnable(&cmd);
+					} else if (isCommand(&cmd, "disable")) {
+						handleDisable(&cmd);
+					} else if(isCommand(&cmd, "enable-channels")) {
+						handleEnableChannels(&cmd);
+					} else if(isCommand(&cmd, "disable-channels")) {
+						handleDisableChannels(&cmd);
+					} else if(isCommand(&cmd, "inhibit-channels")) {
+						handleInhibitChannels(&cmd);
+					} else if (isCommand(&cmd, "test-float") || isCommand(&cmd, "do-float")) {
+						handleFloat(&cmd);
+					} else if (isCommand(&cmd, "test-payout") || isCommand(&cmd, "do-payout")) {
+						handlePayout(&cmd);
+					} else if (isCommand(&cmd, "get-firmware-version")) {
+						handleGetFirmwareVersion(&cmd);
+					} else if (isCommand(&cmd, "get-dataset-version")) {
+						handleGetDatasetVersion(&cmd);
+					} else if (isCommand(&cmd, "channel-security-data")) {
+						handleChannelSecurityData(&cmd);
+					} else if (isCommand(&cmd, "get-all-levels")) {
+						handleGetAllLevels(&cmd);
+					} else if (isCommand(&cmd, "set-denomination-level")) {
+						handleSetDenominationLevels(&cmd);
+					} else if (isCommand(&cmd, "last-reject-note")) {
+						handleLastRejectNote(&cmd);
+					} else {
+						replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
+								cmd.correlId, cmd.command);
+					}
 				}
 			}
 
