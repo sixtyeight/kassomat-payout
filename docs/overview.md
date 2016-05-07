@@ -310,6 +310,7 @@ message will be published to the ``response`` topic.
  - [Hiredis][hiredis]
  - [libevent][libevent]
  - [libuuid][libuuid]
+ - [Jansson][libjansson]
  - [SSP protocol example code from Innovative Technology][itl]
 
 ### Hardware Documentation
@@ -331,6 +332,7 @@ message will be published to the ``response`` topic.
 [hiredis]: https://github.com/redis/hiredis
 [libevent]: http://libevent.org
 [libuuid]: http://sourceforge.net/projects/libuuid
+[libjansson]: https://github.com/akheron/jansson
 [itl]: http://innovative-technology.com
 [itl-sh]: http://innovative-technology.com/images/pdocuments/manuals/SMART_Hopper_manual_set.zip
 [itl-nv200]: http://innovative-technology.com/images/pdocuments/manuals/NV200%20manual%20set.zip
