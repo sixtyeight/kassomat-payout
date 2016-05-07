@@ -748,7 +748,7 @@ void handleGetFirmwareVersion(struct m_command *cmd) {
 	SSP_RESPONSE_ENUM resp = mc_ssp_get_firmware_version(&cmd->device->sspC, &firmwareVersion[0]);
 
 	if(resp == SSP_RESPONSE_OK) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}", cmd->correlId, firmwareVersion);
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"}", cmd->correlId, firmwareVersion);
 	} else {
 		replyWithSspResponse(cmd, resp);
 	}
