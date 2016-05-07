@@ -104,15 +104,26 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key, struct m_d
 void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 
 // mc_ssp_* : ssp magic values and functions (each of these relate directly to a command specified in the ssp protocol)
+
+/** Magic Constant for the "GET FIRMWARE VERSION" command ID as specified in SSP */
 #define SSP_CMD_GET_FIRMWARE_VERSION 0x20
+/** Magic Constant for the "GET DATASET VERSION" command ID as specified in SSP */
 #define SSP_CMD_GET_DATASET_VERSION 0x21
+/** Magic Constant for the "GET ALL LEVELS" command ID as specified in SSP */
 #define SSP_CMD_GET_ALL_LEVELS 0x22
+/** Magic Constant for the "SET DENOMINATION LEVEL" command ID as specified in SSP */
 #define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
+/** Magic Constant for the "LAST REJECT NOTE" command ID as specified in SSP */
 #define SSP_CMD_LAST_REJECT_NOTE 0x17
+/** Magic Constant for the "CONFIGURE BEZEL" command ID as specified in SSP */
 #define SSP_CMD_CONFIGURE_BEZEL 0x54
+/** Magic Constant for the "SMART EMPTY" command ID as specified in SSP */
 #define SSP_CMD_SMART_EMPTY 0x52
+/** Magic Constant for the "SET REFILL MODE " command ID as specified in SSP */
 #define SSP_CMD_SET_REFILL_MODE 0x30
+/** Magic Constant for the "DISPLAY OFF" command ID as specified in SSP */
 #define SSP_CMD_DISPLAY_OFF 0x4
+/** Magic Constant for the "DISPLAY ON" command ID as specified in SSP */
 #define SSP_CMD_DISPLAY_ON 0x3
 
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
@@ -129,7 +140,9 @@ SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
 SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
 
+/** Magic Constant for the "route to cashbox" option as specified in SSP */
 static const char ROUTE_CASHBOX = 0x01;
+/** Magic Constant for the "route to storage" option as specified in SSP */
 static const char ROUTE_STORAGE = 0x00;
 
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
@@ -357,7 +370,6 @@ int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
 				cmd->msgId,
 				cmd->correlId,
 				errorMsg);
-
 	}
 }
 
