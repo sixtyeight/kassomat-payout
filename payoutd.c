@@ -918,26 +918,26 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// extract the 'msgId' property (used as the 'correlId' in a response)
 			// this will be the 'correlId' used in replies.
 			json_t *jMsgId = json_object_get(cmd.jsonMessage, "msgId");
-		    if(! json_is_string(jMsgId)) {
-		    	replyWithPropertyError(&cmd, "msgId");
-		    	json_decref(cmd.jsonMessage);
-		    	return;
-		    } else {
+			if(! json_is_string(jMsgId)) {
+				replyWithPropertyError(&cmd, "msgId");
+				json_decref(cmd.jsonMessage);
+				return;
+			} else {
 				cmd.correlId = (char *) json_string_value(jMsgId); // cast for now
-		    }
+			}
 
-		    // extract the 'cmd' property
-		    json_t *jCmd = json_object_get(cmd.jsonMessage, "cmd");
-		    if(! json_is_string(jCmd)) {
-		    	replyWithPropertyError(&cmd, "cmd");
-		    	json_decref(cmd.jsonMessage);
-		    	return;
-		    } else {
-		    	cmd.command = (char *) json_string_value(jCmd); // cast for now
-		    }
+			// extract the 'cmd' property
+			json_t *jCmd = json_object_get(cmd.jsonMessage, "cmd");
+			if(! json_is_string(jCmd)) {
+				replyWithPropertyError(&cmd, "cmd");
+				json_decref(cmd.jsonMessage);
+				return;
+			} else {
+				cmd.command = (char *) json_string_value(jCmd); // cast for now
+			}
 
-		    // proper json structure, properties cmd and msgId have been verified here.
-		    // also we know which device is used and where we should send our response to.
+			// proper json structure, properties cmd and msgId have been verified here.
+			// also we know which device is used and where we should send our response to.
 			// finally try to dispatch the message to the appropriate command handler
 			// function if any. in case we don't know that command we respond with a
 			// generic error response.
@@ -1916,16 +1916,16 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 
 	/* The first data byte oin the response is the number of counters returned. Each counter consists of 9 bytes of
 	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ascii country
-     * code.
-     */
+	 * code.
+	 */
 
 	int i = 0;
 
 	i++; // move onto numCounters
 	int numCounters = sspC->ResponseData[i];
 
-    /* Create StringBuffer 'object' (struct) */
-    SB *sb = getStringBuffer();
+	/* Create StringBuffer 'object' (struct) */
+	SB *sb = getStringBuffer();
 
 	int j; // current counter
 	for (j = 0; j < numCounters; ++j) {
@@ -1966,13 +1966,13 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 		free(response);
 	}
 
-    /* Call toString() function to get catenated list */
-    char *result = sb->toString( sb );
+	/* Call toString() function to get catenated list */
+	char *result = sb->toString( sb );
 
-    asprintf(json, "%s", result);
+	asprintf(json, "%s", result);
 
-    /* Dispose of StringBuffer's memory */
-    sb->dispose( &sb ); /* Note: Need to pass ADDRESS of struct pointer to dispose() */
+	/* Dispose of StringBuffer's memory */
+	sb->dispose( &sb ); /* Note: Need to pass ADDRESS of struct pointer to dispose() */
 
 	return resp;
 }
