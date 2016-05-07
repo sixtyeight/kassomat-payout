@@ -572,21 +572,16 @@ void handleDisableChannels(struct m_command *cmd) {
  */
 void handleInhibitChannels(struct m_command *cmd) {
 	char *responseTopic = cmd->responseTopic;
-	const char *channelsToken = "\"channels\":\"";
 
-	char *channelsStart = strstr(cmd->message, channelsToken);
-	if (channelsStart == NULL) {
-		replyWith(responseTopic, "{\"error\":\"channels missing\"}");
-		return;
-	}
-	channelsStart= channelsStart + strlen(channelsToken);
-	char *channelsEnd = strstr(channelsStart, "\"");
-	if (channelsEnd == NULL) {
-		replyWith(responseTopic, "{\"error\":\"channels not a string\"}");
+	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
+	if(! json_is_string(jChannels)) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
+				cmd->responseMsgId, cmd->msgId);
 		return;
 	}
 
-	char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+	char *channels = (char *) json_string_value(jChannels);
+
 	unsigned char lowChannels = 0xFF;
 	unsigned char highChannels = 0xFF;
 
