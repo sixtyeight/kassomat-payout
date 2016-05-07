@@ -933,7 +933,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 		    	json_decref(cmd.jsonMessage);
 		    	return;
 		    } else {
-				cmd.command = (char *) json_string_value(jCmd); // cast for now
+		    	cmd.command = (char *) json_string_value(jCmd); // cast for now
 		    }
 
 		    // proper json structure, properties cmd and msgId have been verified here.
@@ -995,7 +995,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			}
 
 			// this will also free the other json objects associated with it
-		    json_decref(cmd.jsonMessage);
+			json_decref(cmd.jsonMessage);
 		}
 	}
 }
