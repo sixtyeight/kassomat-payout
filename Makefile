@@ -14,7 +14,7 @@ INCLUDES =
 LDFLAGS =  -s
 RCFLAGS = 
 \LDLIBS = $(T_LDLIBS)  -lstdc++ -lpthread
-LDLIBS = $(T_LDLIBS)  -lpthread -lhiredis -levent -luuid
+LDLIBS = $(T_LDLIBS)  -lpthread -lhiredis -levent -luuid -ljansson
 
 LINK_exe = gcc -o $@ $^ $(LDFLAGS) $(LDLIBS)
 LINK_con = gcc -o $@ $^ $(LDFLAGS) $(LDLIBS)

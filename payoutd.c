@@ -23,6 +23,9 @@
 #include "ssp_commands.h"
 #include "SSPComs.h"
 
+// json library
+#include <jansson.h>
+
 // c client for redis
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
