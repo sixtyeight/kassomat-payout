@@ -1176,7 +1176,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	char c;
-	while ((c = getopt(argc, argv, "h:p:d:")) != -1)
+	while ((c = getopt(argc, argv, "h:p:d:")) != -1) {
 		switch (c) {
 		case 'h':
 			metacash->redisHost = optarg;
@@ -1188,16 +1188,18 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 			metacash->serialDevice = optarg;
 			break;
 		case '?':
-			if (optopt == 'h' || optopt == 'p' || optopt == 'd')
+			if (optopt == 'h' || optopt == 'p' || optopt == 'd') {
 				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-			else if (isprint(optopt))
+			} else if (isprint(optopt)) {
 				fprintf(stderr, "Unknown option '-%c'.\n", optopt);
-			else
+			} else {
 				fprintf(stderr, "Unknown option character 'x%x'.\n", optopt);
+			}
 			return 1;
 		default:
 			return 1;
 		}
+	}
 
 	return 0;
 }
@@ -1914,14 +1916,17 @@ SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, i
 	int j = 0;
 	int i;
 
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 2; i++) {
 		sspC->CommandData[++j] = level >> (i * 8);
+	}
 
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < 4; i++) {
 		sspC->CommandData[++j] = amount >> (i * 8);
+	}
 
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < 3; i++) {
 		sspC->CommandData[++j] = cc[i];
+	}
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
@@ -2027,15 +2032,18 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 	int j = 0;
 
 	// minimum requested value to float
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 2; i++) {
 		sspC->CommandData[++j] = 100 >> (i * 8); // min 1 euro
+	}
 
 	// amount to keep for payout
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < 4; i++) {
 		sspC->CommandData[++j] = value >> (i * 8) ;
+	}
 
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < 3; i++) {
 		sspC->CommandData[++j] = cc[i];
+	}
 
 	sspC->CommandData[++j] = option;
 
