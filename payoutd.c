@@ -69,6 +69,18 @@ struct m_metacash {
 	struct m_device validator; // nv200 + smart payout devices
 };
 
+struct m_command {
+	char *message;
+
+	char *command;
+	char *msgId;
+	char *responseMsgId;
+	char *responseTopic;
+
+	struct m_device *device;
+	struct m_metacash *metacash;
+};
+
 // mcSsp* : ssp helper functions
 int mcSspOpenSerialDevice(struct m_metacash *metacash);
 void mcSspCloseSerialDevice(struct m_metacash *metacash);
@@ -96,7 +108,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason);
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json);
-SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc);
+SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, const char *cc);
 SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value, const char *cc, const char option);
 SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
@@ -291,6 +303,556 @@ int replyAccepted(redisAsyncContext *c, char *topic, char *responseMsgId, char *
 }
 
 /**
+ * Handles the "quit" command.
+ */
+void handleQuit(struct m_command *cmd) {
+	replyOk(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	receivedSignal = 1;
+}
+
+/**
+ * Handles the "empty" command.
+ */
+void handleEmpty(struct m_command *cmd) {
+	mc_ssp_empty(&cmd->device->sspC);
+	replyAccepted(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+}
+
+/**
+ * Handles the "smart-empty" command.
+ */
+void handleSmartEmpty(struct m_command *cmd) {
+	mc_ssp_smart_empty(&cmd->device->sspC);
+	replyAccepted(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+}
+
+/**
+ * Handles the "do-payout" and "test-payout" commands.
+ */
+void handlePayout(struct m_command *cmd) {
+	int payoutOption = 0;
+
+	if (isCommand(cmd->message, "do-payout")) {
+		payoutOption = SSP6_OPTION_BYTE_DO;
+	} else {
+		payoutOption = SSP6_OPTION_BYTE_TEST;
+	}
+
+	char *amountToken = "\"amount\":";
+	char *amountStart = strstr(cmd->message, amountToken);
+	if (amountStart != NULL) {
+		amountStart = amountStart + strlen(amountToken);
+		int amount = atoi(amountStart);
+
+		if (ssp6_payout(&cmd->device->sspC, amount, CURRENCY,
+				payoutOption) != SSP_RESPONSE_OK) {
+			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+			char *error = NULL;
+			switch (cmd->device->sspC.ResponseData[1]) {
+			case 0x01:
+				error = "not enough value in smart payout";
+				break;
+			case 0x02:
+				error = "can't pay exact amount";
+				break;
+			case 0x03:
+				error = "smart payout busy";
+				break;
+			case 0x04:
+				error = "smart payout disabled";
+				break;
+			default:
+				error = "unknown";
+				break;
+			}
+
+			replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", cmd->msgId, error);
+		} else {
+			replyOk(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+		}
+	}
+}
+
+/**
+ * Handles the "do-float" and "test-float" commands.
+ */
+void handleFloat(struct m_command *cmd) {
+	// basically a copy of do/test-payout ...
+	int payoutOption = 0;
+
+	if (isCommand(cmd->message, "do-float")) {
+		payoutOption = SSP6_OPTION_BYTE_DO;
+	} else {
+		payoutOption = SSP6_OPTION_BYTE_TEST;
+	}
+
+	char *amountToken = "\"amount\":";
+	char *amountStart = strstr(cmd->message, amountToken);
+	if (amountStart != NULL) {
+		amountStart = amountStart + strlen(amountToken);
+		int amount = atoi(amountStart);
+
+		if (mc_ssp_float(&cmd->device->sspC, amount, CURRENCY,
+				payoutOption) != SSP_RESPONSE_OK) {
+			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+			char *error = NULL;
+			switch (cmd->device->sspC.ResponseData[1]) {
+			case 0x01:
+				error = "not enough value in smart payout";
+				break;
+			case 0x02:
+				error = "can't pay exact amount";
+				break;
+			case 0x03:
+				error = "smart payout busy";
+				break;
+			case 0x04:
+				error = "smart payout disabled";
+				break;
+			default:
+				error = "unknown";
+				break;
+			}
+			replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}",
+					cmd->msgId, error);
+		} else {
+			replyOk(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+		}
+	}
+}
+
+/**
+ * Print debug output dbgDisplayInhibits.
+ */
+void dbgDisplayInhibits(unsigned char inhibits) {
+	printf("dbgDisplayInhibits: inhibits are: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
+			(inhibits >> 0) & 1,
+			(inhibits >> 1) & 1,
+			(inhibits >> 2) & 1,
+			(inhibits >> 3) & 1,
+			(inhibits >> 4) & 1,
+			(inhibits >> 5) & 1,
+			(inhibits >> 6) & 1,
+			(inhibits >> 7) & 1);
+}
+
+/**
+ * Handles the "enable-channels" command.
+ */
+void handleEnableChannels(struct m_command *cmd) {
+	redisAsyncContext *publishCtx = cmd->metacash->redisPublishCtx;
+	char *responseTopic = cmd->responseTopic;
+	const char *channelsToken = "\"channels\":\"";
+
+	char *channelsStart = strstr(cmd->message, channelsToken);
+	if (channelsStart == NULL) {
+		replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
+		return;
+	}
+	channelsStart= channelsStart + strlen(channelsToken);
+	char *channelsEnd = strstr(channelsStart, "\"");
+	if (channelsEnd == NULL) {
+		replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
+		return;
+	}
+
+	// this will be updated and written back to the device state
+	// if the update succeeds
+	unsigned char currentChannelInhibits = cmd->device->channelInhibits;
+
+	char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+	unsigned char highChannels = 0xFF; // actually not in use
+
+	// 8 channels for now, set the bit to 1 for each requested channel
+	if(strstr(channels, "1") != NULL) {
+		currentChannelInhibits |= 1 << 0;
+	}
+	if(strstr(channels, "2") != NULL) {
+		currentChannelInhibits |= 1 << 1;
+	}
+	if(strstr(channels, "3") != NULL) {
+		currentChannelInhibits |= 1 << 2;
+	}
+	if(strstr(channels, "4") != NULL) {
+		currentChannelInhibits |= 1 << 3;
+	}
+	if(strstr(channels, "5") != NULL) {
+		currentChannelInhibits |= 1 << 4;
+	}
+	if(strstr(channels, "6") != NULL) {
+		currentChannelInhibits |= 1 << 5;
+	}
+	if(strstr(channels, "7") != NULL) {
+		currentChannelInhibits |= 1 << 6;
+	}
+	if(strstr(channels, "8") != NULL) {
+		currentChannelInhibits |= 1 << 7;
+	}
+
+	SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&cmd->device->sspC, currentChannelInhibits, highChannels);
+
+	if(r == SSP_RESPONSE_OK) {
+		// okay, update the channelInhibits in the device structure with the new state
+		cmd->device->channelInhibits = currentChannelInhibits;
+
+		if(0) {
+			printf("enable-channels:\n");
+			dbgDisplayInhibits(currentChannelInhibits);
+		}
+
+		replyOk(publishCtx, responseTopic, cmd->responseMsgId, cmd->msgId);
+	} else {
+		replyFailed(publishCtx, responseTopic, cmd->responseMsgId, cmd->msgId);
+	}
+
+	free(channels);
+}
+
+/**
+ * Handles the "disable-channels" command.
+ */
+void handleDisableChannels(struct m_command *cmd) {
+	redisAsyncContext *publishCtx = cmd->metacash->redisPublishCtx;
+	char *responseTopic = cmd->responseTopic;
+	const char *channelsToken = "\"channels\":\"";
+
+	char *channelsStart = strstr(cmd->message, channelsToken);
+	if (channelsStart == NULL) {
+		replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
+		return;
+	}
+	channelsStart= channelsStart + strlen(channelsToken);
+	char *channelsEnd = strstr(channelsStart, "\"");
+	if (channelsEnd == NULL) {
+		replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
+		return;
+	}
+
+	// this will be updated and written back to the device state
+	// if the update succeeds
+	unsigned char currentChannelInhibits = cmd->device->channelInhibits;
+
+	char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+	unsigned char highChannels = 0xFF; // actually not in use
+
+	// 8 channels for now, set the bit to 0 for each requested channel
+	if(strstr(channels, "1") != NULL) {
+		currentChannelInhibits &= ~(1 << 0);
+	}
+	if(strstr(channels, "2") != NULL) {
+		currentChannelInhibits &= ~(1 << 1);
+	}
+	if(strstr(channels, "3") != NULL) {
+		currentChannelInhibits &= ~(1 << 2);
+	}
+	if(strstr(channels, "4") != NULL) {
+		currentChannelInhibits &= ~(1 << 3);
+	}
+	if(strstr(channels, "5") != NULL) {
+		currentChannelInhibits &= ~(1 << 4);
+	}
+	if(strstr(channels, "6") != NULL) {
+		currentChannelInhibits &= ~(1 << 5);
+	}
+	if(strstr(channels, "7") != NULL) {
+		currentChannelInhibits &= ~(1 << 6);
+	}
+	if(strstr(channels, "8") != NULL) {
+		currentChannelInhibits &= ~(1 << 7);
+	}
+
+	SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&cmd->device->sspC, currentChannelInhibits, highChannels);
+
+	if(r == SSP_RESPONSE_OK) {
+		// okay, update the channelInhibits in the device structure with the new state
+		cmd->device->channelInhibits = currentChannelInhibits;
+
+		if(0) {
+			printf("disable-channels:\n");
+			dbgDisplayInhibits(currentChannelInhibits);
+		}
+
+		replyOk(cmd->metacash->redisPublishCtx, responseTopic, cmd->responseMsgId, cmd->msgId);
+	} else {
+		replyFailed(cmd->metacash->redisPublishCtx, responseTopic, cmd->responseMsgId, cmd->msgId);
+	}
+
+	free(channels);
+}
+
+/**
+ * Handles the "inhibit-channels" command.
+ */
+void handleInhibitChannels(struct m_command *cmd) {
+	redisAsyncContext *publishCtx = cmd->metacash->redisPublishCtx;
+	char *responseTopic = cmd->responseTopic;
+	const char *channelsToken = "\"channels\":\"";
+
+	char *channelsStart = strstr(cmd->message, channelsToken);
+	if (channelsStart == NULL) {
+		replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
+		return;
+	}
+	channelsStart= channelsStart + strlen(channelsToken);
+	char *channelsEnd = strstr(channelsStart, "\"");
+	if (channelsEnd == NULL) {
+		replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
+		return;
+	}
+
+	char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
+	unsigned char lowChannels = 0xFF;
+	unsigned char highChannels = 0xFF;
+
+	// 8 channels for now
+	if(strstr(channels, "1") != NULL) {
+		lowChannels &= ~(1 << 0);
+	}
+	if(strstr(channels, "2") != NULL) {
+		lowChannels &= ~(1 << 1);
+	}
+	if(strstr(channels, "3") != NULL) {
+		lowChannels &= ~(1 << 2);
+	}
+	if(strstr(channels, "4") != NULL) {
+		lowChannels &= ~(1 << 3);
+	}
+	if(strstr(channels, "5") != NULL) {
+		lowChannels &= ~(1 << 4);
+	}
+	if(strstr(channels, "6") != NULL) {
+		lowChannels &= ~(1 << 5);
+	}
+	if(strstr(channels, "7") != NULL) {
+		lowChannels &= ~(1 << 6);
+	}
+	if(strstr(channels, "8") != NULL) {
+		lowChannels &= ~(1 << 7);
+	}
+
+	SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&cmd->device->sspC, lowChannels, highChannels);
+
+	if(r == SSP_RESPONSE_OK) {
+		replyOk(publishCtx, responseTopic, cmd->responseMsgId, cmd->msgId);
+	} else {
+		replyFailed(publishCtx, responseTopic, cmd->responseMsgId, cmd->msgId);
+	}
+
+	free(channels);
+}
+
+/**
+ * Handles the "enable" command.
+ */
+void handleEnable(struct m_command *cmd) {
+	ssp6_enable(&cmd->device->sspC);
+	replyAccepted(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+}
+
+/**
+ * Handles the "disable" command.
+ */
+void handleDisable(struct m_command *cmd) {
+	ssp6_disable(&cmd->device->sspC);
+	replyAccepted(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+}
+
+/**
+ * Handles the "set-denomination-levels" command.
+ */
+void handleSetDenominationLevels(struct m_command *cmd) {
+	char *levelToken = "\"level\":";
+	char *levelStart = strstr(cmd->message, levelToken);
+	int level;
+	if (levelStart != NULL) {
+		levelStart = levelStart + strlen(levelToken);
+		level = atoi(levelStart);
+	}
+
+	char *amountToken = "\"amount\":";
+	char *amountStart = strstr(cmd->message, amountToken);
+	int amount;
+	if (amountStart != NULL) {
+		amountStart = amountStart + strlen(amountToken);
+		amount = atoi(amountStart);
+	}
+
+	if(level > 0) {
+		/* Quote from the spec -.-
+		 *
+		 * A command to increment the level of coins of a denomination stored in the hopper.
+		 * The command is formatted with the command byte first, amount of coins to *add*
+		 * as a 2-byte little endian, the value of coin as 2-byte little endian and
+		 * (if using protocol version 6) the country code of the coin as 3 byte ASCII. The level of coins for a
+		 * denomination can be set to zero by sending a zero level for that value.
+		 *
+		 * In a nutshell: This command behaves only with a level of 0 as expected (setting the absolute value),
+		 * otherwise it works like the not existing "increment denomination level" command.
+		 */
+
+		mc_ssp_set_denomination_level(&cmd->device->sspC, amount, 0, CURRENCY); // ignore the result for now
+	}
+
+	if (mc_ssp_set_denomination_level(&cmd->device->sspC, amount, level, CURRENCY) == SSP_RESPONSE_OK) {
+		replyOk(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	} else {
+		replyFailed(cmd->metacash->redisPublishCtx, cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	}
+}
+
+/**
+ * Handles the "get-all-levels" command.
+ */
+void handleGetAllLevels(struct m_command *cmd) {
+	char *json = NULL;
+	mc_ssp_get_all_levels(&cmd->device->sspC, &json);
+	replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic,
+			"{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->msgId, json);
+	free(json);
+}
+
+/**
+ * Handles the "get-firmware-version" command.
+ */
+void handleGetFirmwareVersion(struct m_command *cmd) {
+	char firmwareVersion[100] = { 0 };
+	mc_ssp_get_firmware_version(&cmd->device->sspC, &firmwareVersion[0]);
+	replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic,
+			"{\"correlId\":\"%s\",\"version\":\"%s\"]}", cmd->msgId, firmwareVersion);
+}
+
+/**
+ * Handles the "get-dataset-version" command.
+ */
+void handleGetDatasetVersion(struct m_command *cmd) {
+	char datasetVersion[100] = { 0 };
+	mc_ssp_get_dataset_version(&cmd->device->sspC, &datasetVersion[0]);
+	replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}",
+			cmd->msgId, datasetVersion);
+}
+
+/**
+ * Handles the "last-reject-note" command.
+ */
+void handleLastRejectNote(struct m_command *cmd) {
+	unsigned char reasonCode;
+	char *reason = NULL;
+
+	if (mc_ssp_last_reject_note(&cmd->device->sspC, &reasonCode)
+			== SSP_RESPONSE_OK) {
+		switch (reasonCode) {
+		case 0x00: // Note accepted
+			reason = "note accepted";
+			break;
+		case 0x01: // Note length incorrect
+			reason = "note length incorrect";
+			break;
+		case 0x02: // Reject reason 2
+			reason = "undisclosed (reject reason 2)";
+			break;
+		case 0x03: // Reject reason 3
+			reason = "undisclosed (reject reason 3)";
+			break;
+		case 0x04: // Reject reason 4
+			reason = "undisclosed (reject reason 4)";
+			break;
+		case 0x05: // Reject reason 5
+			reason = "undisclosed (reject reason 5)";
+			break;
+		case 0x06: // Channel inhibited
+			reason = "channel inhibited";
+			break;
+		case 0x07: // Second note inserted
+			reason = "second note inserted";
+			break;
+		case 0x08: // Reject reason 8
+			reason = "undisclosed (reject reason 8)";
+			break;
+		case 0x09: // Note recognised in more than one channel
+			reason = "note recognised in more than one channel";
+			break;
+		case 0x0A: // Reject reason 10
+			reason = "undisclosed (reject reason 10)";
+			break;
+		case 0x0B: // Note too long
+			reason = "note too long";
+			break;
+		case 0x0C: // Reject reason 12
+			reason = "undisclosed (reject reason 12)";
+			break;
+		case 0x0D: // Mechanism slow/stalled
+			reason = "mechanism slow/stalled";
+			break;
+		case 0x0E: // Strimming attempt detected
+			reason = "strimming attempt detected";
+			break;
+		case 0x0F: // Fraud channel reject
+			reason = "fraud channel reject";
+			break;
+		case 0x10: // No notes inserted
+			reason = "no notes inserted";
+			break;
+		case 0x11: // Peak detect fail
+			reason = "peak detect fail";
+			break;
+		case 0x12: // Twisted note detected
+			reason = "twisted note detected";
+			break;
+		case 0x13: // Escrow time-out
+			reason = "escrow time-out";
+			break;
+		case 0x14: // Bar code scan fail
+			reason = "bar code scan fail";
+			break;
+		case 0x15: // Rear sensor 2 fail
+			reason = "rear sensor 2 fail";
+			break;
+		case 0x16: // Slot fail 1
+			reason = "slot fail 1";
+			break;
+		case 0x17: // Slot fail 2
+			reason = "slot fail 2";
+			break;
+		case 0x18: // Lens over-sample
+			reason = "lens over-sample";
+			break;
+		case 0x19: // Width detect fail
+			reason = "width detect fail";
+			break;
+		case 0x1A: // Short note detected
+			reason = "short note detected";
+			break;
+		case 0x1B: // Note payout
+			reason = "note payout";
+			break;
+		case 0x1C: // Unable to stack note
+			reason = "unable to stack note";
+			break;
+		default: // not defined in API doc
+			break;
+		}
+		if (reason != NULL) {
+			replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic,
+					"{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}",
+					cmd->msgId, reason, reasonCode);
+		} else {
+			replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic,
+					"{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}",
+					cmd->msgId, reasonCode);
+		}
+	} else {
+		replyWith(cmd->metacash->redisPublishCtx, cmd->responseTopic, "{\"timeout\":\"last reject note\"}");
+	}
+}
+
+/**
+ * Handles the "channel-security" command.
+ */
+void handleChannelSecurityData(struct m_command *cmd) {
+	mc_ssp_channel_security_data(&cmd->device->sspC);
+}
+
+/**
  * Callback function triggered by an incoming message in either
  * the "hopper-request" or "validator-request" topic.
  */
@@ -310,6 +872,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			char *topic = reply->element[1]->str;
 			struct m_device *device = NULL;
 
+			// decide to which topic the response should be sent to
 			char *responseTopic = NULL;
 			if (strcmp(topic, "validator-request") == 0) {
 				device = &m->validator;
@@ -323,6 +886,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 			char *message = reply->element[2]->str;
 
+			// extract the msgId from the message (used as the correlId in the response)
 			const char *msgIdToken = "\"msgId\":\"";
 			char *msgIdStart = strstr(message, msgIdToken);
 			if (msgIdStart == NULL) {
@@ -344,473 +908,55 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			char responseMsgId[37] = { 0 }; // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
 			uuid_unparse_lower(uuid, responseMsgId);
 
+			// prepare a nice small structure with all the data necessary
+			// for the command handler functions.
+			struct m_command cmd;
+			cmd.message = message;
+			cmd.msgId = msgId;
+			cmd.responseMsgId = responseMsgId;
+			cmd.responseTopic = responseTopic;
+			cmd.device = device;
+
 			printf("responding with correlId=\"%s\" and msgId=\"%s\"\n", msgId,
 					responseMsgId);
 
+			// finally try to dispatch the message to the appropriate command handler
+			// function if any. in case we don't know that command we respond with a
+			// generic error response.
 			if(isCommand(message, "quit")) {
-				replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-				receivedSignal = 1;
+				handleQuit(&cmd);
 			} else if (isCommand(message, "empty")) {
-				mc_ssp_empty(&device->sspC);
-
-				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
+				handleEmpty(&cmd);
 			} else if (isCommand(message, "smart-empty")) {
-				mc_ssp_smart_empty(&device->sspC);
-
-				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
+				handleSmartEmpty(&cmd);
 			} else if (isCommand(message, "enable")) {
-				ssp6_enable(&device->sspC);
-
-				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
+				handleEnable(&cmd);
 			} else if (isCommand(message, "disable")) {
-				ssp6_disable(&device->sspC);
-
-				replyAccepted(publishCtx, responseTopic, responseMsgId, msgId);
+				handleDisable(&cmd);
 			} else if(isCommand(message, "enable-channels")) {
-				const char *channelsToken = "\"channels\":\"";
-
-				char *channelsStart = strstr(message, channelsToken);
-				if (channelsStart == NULL) {
-					replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
-					return;
-				}
-				channelsStart= channelsStart + strlen(channelsToken);
-				char *channelsEnd = strstr(channelsStart, "\"");
-				if (channelsEnd == NULL) {
-					replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
-					return;
-				}
-
-				// this will be updated and written back to the device state
-				// if the update succeeds
-				unsigned char currentChannelInhibits = device->channelInhibits;
-
-				char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
-				unsigned char highChannels = 0xFF; // actually not in use
-
-				// 8 channels for now, set the bit to 1 for each requested channel
-				if(strstr(channels, "1") != NULL) {
-					currentChannelInhibits |= 1 << 0;
-				}
-				if(strstr(channels, "2") != NULL) {
-					currentChannelInhibits |= 1 << 1;
-				}
-				if(strstr(channels, "3") != NULL) {
-					currentChannelInhibits |= 1 << 2;
-				}
-				if(strstr(channels, "4") != NULL) {
-					currentChannelInhibits |= 1 << 3;
-				}
-				if(strstr(channels, "5") != NULL) {
-					currentChannelInhibits |= 1 << 4;
-				}
-				if(strstr(channels, "6") != NULL) {
-					currentChannelInhibits |= 1 << 5;
-				}
-				if(strstr(channels, "7") != NULL) {
-					currentChannelInhibits |= 1 << 6;
-				}
-				if(strstr(channels, "8") != NULL) {
-					currentChannelInhibits |= 1 << 7;
-				}
-
-				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, currentChannelInhibits, highChannels);
-
-				if(r == SSP_RESPONSE_OK) {
-					// okay, update the channelInhibits in the device structure with the new state
-					device->channelInhibits = currentChannelInhibits;
-
-					if(0) {
-						printf("enable-channels: current inhibits now: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
-								(currentChannelInhibits >> 0) & 1,
-								(currentChannelInhibits >> 1) & 1,
-								(currentChannelInhibits >> 2) & 1,
-								(currentChannelInhibits >> 3) & 1,
-								(currentChannelInhibits >> 4) & 1,
-								(currentChannelInhibits >> 5) & 1,
-								(currentChannelInhibits >> 6) & 1,
-								(currentChannelInhibits >> 7) & 1);
-					}
-
-					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-				} else {
-					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
-				}
-
-				free(channels);
+				handleEnableChannels(&cmd);
 			} else if(isCommand(message, "disable-channels")) {
-				const char *channelsToken = "\"channels\":\"";
-
-				char *channelsStart = strstr(message, channelsToken);
-				if (channelsStart == NULL) {
-					replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
-					return;
-				}
-				channelsStart= channelsStart + strlen(channelsToken);
-				char *channelsEnd = strstr(channelsStart, "\"");
-				if (channelsEnd == NULL) {
-					replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
-					return;
-				}
-
-				// this will be updated and written back to the device state
-				// if the update succeeds
-				unsigned char currentChannelInhibits = device->channelInhibits;
-
-				char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
-				unsigned char highChannels = 0xFF; // actually not in use
-
-				// 8 channels for now, set the bit to 0 for each requested channel
-				if(strstr(channels, "1") != NULL) {
-					currentChannelInhibits &= ~(1 << 0);
-				}
-				if(strstr(channels, "2") != NULL) {
-					currentChannelInhibits &= ~(1 << 1);
-				}
-				if(strstr(channels, "3") != NULL) {
-					currentChannelInhibits &= ~(1 << 2);
-				}
-				if(strstr(channels, "4") != NULL) {
-					currentChannelInhibits &= ~(1 << 3);
-				}
-				if(strstr(channels, "5") != NULL) {
-					currentChannelInhibits &= ~(1 << 4);
-				}
-				if(strstr(channels, "6") != NULL) {
-					currentChannelInhibits &= ~(1 << 5);
-				}
-				if(strstr(channels, "7") != NULL) {
-					currentChannelInhibits &= ~(1 << 6);
-				}
-				if(strstr(channels, "8") != NULL) {
-					currentChannelInhibits &= ~(1 << 7);
-				}
-
-				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, currentChannelInhibits, highChannels);
-
-				if(r == SSP_RESPONSE_OK) {
-					// okay, update the channelInhibits in the device structure with the new state
-					device->channelInhibits = currentChannelInhibits;
-
-					if(0) {
-						printf("disable-channels: current inhibits now: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
-								(currentChannelInhibits >> 0) & 1,
-								(currentChannelInhibits >> 1) & 1,
-								(currentChannelInhibits >> 2) & 1,
-								(currentChannelInhibits >> 3) & 1,
-								(currentChannelInhibits >> 4) & 1,
-								(currentChannelInhibits >> 5) & 1,
-								(currentChannelInhibits >> 6) & 1,
-								(currentChannelInhibits >> 7) & 1);
-					}
-
-					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-				} else {
-					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
-				}
-
-				free(channels);
+				handleDisableChannels(&cmd);
 			} else if(isCommand(message, "inhibit-channels")) {
-				const char *channelsToken = "\"channels\":\"";
-
-				char *channelsStart = strstr(message, channelsToken);
-				if (channelsStart == NULL) {
-					replyWith(publishCtx, responseTopic, "{\"error\":\"channels missing\"}");
-					return;
-				}
-				channelsStart= channelsStart + strlen(channelsToken);
-				char *channelsEnd = strstr(channelsStart, "\"");
-				if (channelsEnd == NULL) {
-					replyWith(publishCtx, responseTopic, "{\"error\":\"channels not a string\"}");
-					return;
-				}
-
-				char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
-				unsigned char lowChannels = 0xFF;
-				unsigned char highChannels = 0xFF;
-
-				// 8 channels for now
-				if(strstr(channels, "1") != NULL) {
-					lowChannels &= ~(1 << 0);
-				}
-				if(strstr(channels, "2") != NULL) {
-					lowChannels &= ~(1 << 1);
-				}
-				if(strstr(channels, "3") != NULL) {
-					lowChannels &= ~(1 << 2);
-				}
-				if(strstr(channels, "4") != NULL) {
-					lowChannels &= ~(1 << 3);
-				}
-				if(strstr(channels, "5") != NULL) {
-					lowChannels &= ~(1 << 4);
-				}
-				if(strstr(channels, "6") != NULL) {
-					lowChannels &= ~(1 << 5);
-				}
-				if(strstr(channels, "7") != NULL) {
-					lowChannels &= ~(1 << 6);
-				}
-				if(strstr(channels, "8") != NULL) {
-					lowChannels &= ~(1 << 7);
-				}
-
-				SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&device->sspC, lowChannels, highChannels);
-
-				if(r == SSP_RESPONSE_OK) {
-					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-				} else {
-					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
-				}
-
-				free(channels);
-			} else if (isCommand(message, "test-float")
-					|| isCommand(message, "do-float")) {
-				// basically a copy of do/test-payout ...
-
-				int payoutOption = 0;
-
-				if (isCommand(message, "do-float")) {
-					payoutOption = SSP6_OPTION_BYTE_DO;
-				} else {
-					payoutOption = SSP6_OPTION_BYTE_TEST;
-				}
-
-				char *amountToken = "\"amount\":";
-				char *amountStart = strstr(message, amountToken);
-				if (amountStart != NULL) {
-					amountStart = amountStart + strlen(amountToken);
-					int amount = atoi(amountStart);
-
-					if (mc_ssp_float(&device->sspC, amount, CURRENCY,
-							payoutOption) != SSP_RESPONSE_OK) {
-						// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-						char *error = NULL;
-						switch (device->sspC.ResponseData[1]) {
-						case 0x01:
-							error = "not enough value in smart payout";
-							break;
-						case 0x02:
-							error = "can't pay exact amount";
-							break;
-						case 0x03:
-							error = "smart payout busy";
-							break;
-						case 0x04:
-							error = "smart payout disabled";
-							break;
-						default:
-							error = "unknown";
-							break;
-						}
-						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
-					} else {
-						replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-					}
-				}
-			} else if (isCommand(message, "test-payout")
-					|| isCommand(message, "do-payout")) {
-				int payoutOption = 0;
-
-				if (isCommand(message, "do-payout")) {
-					payoutOption = SSP6_OPTION_BYTE_DO;
-				} else {
-					payoutOption = SSP6_OPTION_BYTE_TEST;
-				}
-
-				char *amountToken = "\"amount\":";
-				char *amountStart = strstr(message, amountToken);
-				if (amountStart != NULL) {
-					amountStart = amountStart + strlen(amountToken);
-					int amount = atoi(amountStart);
-
-					if (ssp6_payout(&device->sspC, amount, CURRENCY,
-							payoutOption) != SSP_RESPONSE_OK) {
-						// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-						char *error = NULL;
-						switch (device->sspC.ResponseData[1]) {
-						case 0x01:
-							error = "not enough value in smart payout";
-							break;
-						case 0x02:
-							error = "can't pay exact amount";
-							break;
-						case 0x03:
-							error = "smart payout busy";
-							break;
-						case 0x04:
-							error = "smart payout disabled";
-							break;
-						default:
-							error = "unknown";
-							break;
-						}
-
-						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", msgId, error);
-					} else {
-						replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-					}
-				}
+				handleInhibitChannels(&cmd);
+			} else if (isCommand(message, "test-float") || isCommand(message, "do-float")) {
+				handleFloat(&cmd);
+			} else if (isCommand(message, "test-payout") || isCommand(message, "do-payout")) {
+				handlePayout(&cmd);
 			} else if (isCommand(message, "get-firmware-version")) {
-				char firmwareVersion[100] = { 0 };
-				mc_ssp_get_firmware_version(&device->sspC, &firmwareVersion[0]);
-				replyWith(publishCtx, responseTopic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, firmwareVersion);
+				handleGetFirmwareVersion(&cmd);
 			} else if (isCommand(message, "get-dataset-version")) {
-				char datasetVersion[100] = { 0 };
-				mc_ssp_get_dataset_version(&device->sspC, &datasetVersion[0]);
-				replyWith(publishCtx, responseTopic,"{\"correlId\":\"%s\",\"version\":\"%s\"]}", msgId, datasetVersion);
-			} else if (isCommand(message, "channel-security")) {
-				mc_ssp_channel_security_data(&device->sspC);
+				handleGetDatasetVersion(&cmd);
+			} else if (isCommand(message, "channel-security-data")) {
+				handleChannelSecurityData(&cmd);
 			} else if (isCommand(message, "get-all-levels")) {
-				char *json = NULL;
-				mc_ssp_get_all_levels(&device->sspC, &json);
-				replyWith(publishCtx, responseTopic,"{\"correlId\":\"%s\",\"levels\":[%s]}", msgId, json);
-				free(json);
+				handleGetAllLevels(&cmd);
 			} else if (isCommand(message, "set-denomination-level")) {
-				char *levelToken = "\"level\":";
-				char *levelStart = strstr(message, levelToken);
-				int level;
-				if (levelStart != NULL) {
-					levelStart = levelStart + strlen(levelToken);
-					level = atoi(levelStart);
-				}
-
-				char *amountToken = "\"amount\":";
-				char *amountStart = strstr(message, amountToken);
-				int amount;
-				if (amountStart != NULL) {
-					amountStart = amountStart + strlen(amountToken);
-					amount = atoi(amountStart);
-				}
-
-				if(level > 0) {
-					/* Quote from the spec -.-
-					 *
-					 * A command to increment the level of coins of a denomination stored in the hopper.
-					 * The command is formatted with the command byte first, amount of coins to *add*
-					 * as a 2-byte little endian, the value of coin as 2-byte little endian and
-					 * (if using protocol version 6) the country code of the coin as 3 byte ASCII. The level of coins for a
-					 * denomination can be set to zero by sending a zero level for that value.
-					 *
-					 * In a nutshell: This command behaves only with a level of 0 as expected (setting the absolute value),
-					 * otherwise it works like the not existing "increment denomination level" command.
-					 */
-
-					mc_ssp_set_denomination_level(&device->sspC, amount, 0, "EUR"); // ignore the result for now
-				}
-
-				if (mc_ssp_set_denomination_level(&device->sspC, amount, level, "EUR") == SSP_RESPONSE_OK) {
-					replyOk(publishCtx, responseTopic, responseMsgId, msgId);
-				} else {
-					replyFailed(publishCtx, responseTopic, responseMsgId, msgId);
-				}
+				handleSetDenominationLevels(&cmd);
 			} else if (isCommand(message, "last-reject-note")) {
-				unsigned char reasonCode;
-				char *reason = NULL;
-
-				if (mc_ssp_last_reject_note(&device->sspC, &reasonCode)
-						== SSP_RESPONSE_OK) {
-					switch (reasonCode) {
-					case 0x00: // Note accepted
-						reason = "note accepted";
-						break;
-					case 0x01: // Note length incorrect
-						reason = "note length incorrect";
-						break;
-					case 0x02: // Reject reason 2
-						reason = "undisclosed (reject reason 2)";
-						break;
-					case 0x03: // Reject reason 3
-						reason = "undisclosed (reject reason 3)";
-						break;
-					case 0x04: // Reject reason 4
-						reason = "undisclosed (reject reason 4)";
-						break;
-					case 0x05: // Reject reason 5
-						reason = "undisclosed (reject reason 5)";
-						break;
-					case 0x06: // Channel inhibited
-						reason = "channel inhibited";
-						break;
-					case 0x07: // Second note inserted
-						reason = "second note inserted";
-						break;
-					case 0x08: // Reject reason 8
-						reason = "undisclosed (reject reason 8)";
-						break;
-					case 0x09: // Note recognised in more than one channel
-						reason = "note recognised in more than one channel";
-						break;
-					case 0x0A: // Reject reason 10
-						reason = "undisclosed (reject reason 10)";
-						break;
-					case 0x0B: // Note too long
-						reason = "note too long";
-						break;
-					case 0x0C: // Reject reason 12
-						reason = "undisclosed (reject reason 12)";
-						break;
-					case 0x0D: // Mechanism slow/stalled
-						reason = "mechanism slow/stalled";
-						break;
-					case 0x0E: // Strimming attempt detected
-						reason = "strimming attempt detected";
-						break;
-					case 0x0F: // Fraud channel reject
-						reason = "fraud channel reject";
-						break;
-					case 0x10: // No notes inserted
-						reason = "no notes inserted";
-						break;
-					case 0x11: // Peak detect fail
-						reason = "peak detect fail";
-						break;
-					case 0x12: // Twisted note detected
-						reason = "twisted note detected";
-						break;
-					case 0x13: // Escrow time-out
-						reason = "escrow time-out";
-						break;
-					case 0x14: // Bar code scan fail
-						reason = "bar code scan fail";
-						break;
-					case 0x15: // Rear sensor 2 fail
-						reason = "rear sensor 2 fail";
-						break;
-					case 0x16: // Slot fail 1
-						reason = "slot fail 1";
-						break;
-					case 0x17: // Slot fail 2
-						reason = "slot fail 2";
-						break;
-					case 0x18: // Lens over-sample
-						reason = "lens over-sample";
-						break;
-					case 0x19: // Width detect fail
-						reason = "width detect fail";
-						break;
-					case 0x1A: // Short note detected
-						reason = "short note detected";
-						break;
-					case 0x1B: // Note payout
-						reason = "note payout";
-						break;
-					case 0x1C: // Unable to stack note
-						reason = "unable to stack note";
-						break;
-					default: // not defined in API doc
-						break;
-					}
-					if (reason != NULL) {
-						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}", msgId, reason, reasonCode);
-					} else {
-						replyWith(publishCtx, responseTopic, "{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}", msgId, reasonCode);
-					}
-				} else {
-					replyWith(publishCtx, responseTopic, "{\"timeout\":\"last reject note\"}");
-				}
+				handleLastRejectNote(&cmd);
 			} else {
-				replyWith(publishCtx, responseTopic, "{\"error\":\"cmd missing\"}", message);
+				replyWith(publishCtx, responseTopic, "{\"error\":\"unknown cmd\"}", message);
 			}
 
 			free(msgId);
@@ -822,40 +968,43 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
  * Callback function triggered by the redis client on connecting with
  * the "publish" context.
  */
-void cbConnectPublishContext(const redisAsyncContext *c, int status) {
+void cbOnConnectPublishContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbConnectPublishContext: redis error: %s\n", c->errstr);
+		fprintf(stderr, "cbOnConnectPublishContext: redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbConnectPublishContext: connected to redis\n");
+	fprintf(stderr, "cbOnConnectPublishContext: connected to redis\n");
 }
 
 /**
  * Callback function triggered by the redis client on disconnecting with
  * the "publish" context.
  */
-void cbDisconnectPublishContext(const redisAsyncContext *c, int status) {
+void cbOnDisconnectPublishContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbDisconnectPublishContext: redis error: %s\n", c->errstr);
+		fprintf(stderr, "cbOnDisconnectPublishContext: redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbDisconnectPublishContext: disconnected from redis\n");
+	fprintf(stderr, "cbOnDisconnectPublishContext: disconnected from redis\n");
 }
 
 /**
  * Callback function triggered by the redis client on connecting with
  * the "subscribe" context.
  */
-void cbConnectSubscribeContext(const redisAsyncContext *c, int status) {
+void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbConnectSubscribeContext - redis error: %s\n", c->errstr);
+		fprintf(stderr, "cbOnConnectSubscribeContext - redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbConnectSubscribeContext - connected to redis\n");
+	fprintf(stderr, "cbOnConnectSubscribeContext - connected to redis\n");
 
 	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier \"const\" warning
 
+	// subscribe the topics in redis from which we want to receive messages
 	redisAsyncCommand(cNotConst, cbOnMetacashMessage, NULL, "SUBSCRIBE metacash");
+
+	// n.b: the same callback function handles both topics
 	redisAsyncCommand(cNotConst, cbOnRequestMessage, NULL, "SUBSCRIBE validator-request");
 	redisAsyncCommand(cNotConst, cbOnRequestMessage, NULL, "SUBSCRIBE hopper-request");
 }
@@ -864,12 +1013,12 @@ void cbConnectSubscribeContext(const redisAsyncContext *c, int status) {
  * Callback function triggered by the redis client on disconnecting with
  * the "subscribe" context.
  */
-void cbDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
+void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbDisconnectSubscribeContext - redis error: %s\n", c->errstr);
+		fprintf(stderr, "cbOnDisconnectSubscribeContext - redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbDisconnectSubscribeContext - disconnected from redis\n");
+	fprintf(stderr, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
 }
 
 /**
@@ -978,8 +1127,6 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 
 	return 0;
 }
-
-// business stuff
 
 /**
  *  Callback function used for publishing events reported by the Hopper hardware.
@@ -1270,12 +1417,12 @@ void setup(struct m_metacash *metacash) {
 	// setup redis
 	if (metacash->redisPublishCtx && metacash->redisSubscribeCtx) {
 		redisLibeventAttach(metacash->redisPublishCtx, metacash->eventBase);
-		redisAsyncSetConnectCallback(metacash->redisPublishCtx, cbConnectPublishContext);
-		redisAsyncSetDisconnectCallback(metacash->redisPublishCtx, cbDisconnectPublishContext);
+		redisAsyncSetConnectCallback(metacash->redisPublishCtx, cbOnConnectPublishContext);
+		redisAsyncSetDisconnectCallback(metacash->redisPublishCtx, cbOnDisconnectPublishContext);
 
 		redisLibeventAttach(metacash->redisSubscribeCtx, metacash->eventBase);
-		redisAsyncSetConnectCallback(metacash->redisSubscribeCtx, cbConnectSubscribeContext);
-		redisAsyncSetDisconnectCallback(metacash->redisSubscribeCtx, cbDisconnectSubscribeContext);
+		redisAsyncSetConnectCallback(metacash->redisSubscribeCtx, cbOnConnectSubscribeContext);
+		redisAsyncSetDisconnectCallback(metacash->redisSubscribeCtx, cbOnDisconnectSubscribeContext);
 	}
 
 	// setup libevent triggered check if we should quit (every 500ms more or less)
@@ -1686,7 +1833,7 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 /**
  * Implements the "SET DENOMINATION LEVEL" command from the SSP Protocol.
  */
-SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, char *cc) {
+SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, const char *cc) {
 	sspC->CommandDataLength = 10;
 	sspC->CommandData[0] = SSP_CMD_SET_DENOMINATION_LEVEL;
 
