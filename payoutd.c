@@ -346,7 +346,7 @@ void handlePayout(struct m_command *cmd) {
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
 	if(! json_is_number(jAmount)) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'amount' missing or not a number\"}",
-				cmd->responseMsgId, cmd->msgId);
+				cmd->msgId);
 		return;
 	}
 
@@ -396,7 +396,7 @@ void handleFloat(struct m_command *cmd) {
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
 	if(! json_is_number(jAmount)) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'amount' missing or not a number\"}",
-				cmd->responseMsgId, cmd->msgId);
+				cmd->msgId);
 		return;
 	}
 
@@ -452,7 +452,7 @@ void handleEnableChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
 	if(! json_is_string(jChannels)) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
-				cmd->responseMsgId, cmd->msgId);
+				cmd->msgId);
 		return;
 	}
 
@@ -513,7 +513,7 @@ void handleDisableChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
 	if(! json_is_string(jChannels)) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
-				cmd->responseMsgId, cmd->msgId);
+				cmd->msgId);
 		return;
 	}
 
@@ -576,7 +576,7 @@ void handleInhibitChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
 	if(! json_is_string(jChannels)) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
-				cmd->responseMsgId, cmd->msgId);
+				cmd->msgId);
 		return;
 	}
 
