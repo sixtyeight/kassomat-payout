@@ -858,6 +858,13 @@ void handleChannelSecurityData(struct m_command *cmd) {
 	mc_ssp_channel_security_data(&cmd->device->sspC);
 }
 
+/*
+ * Handles the "test" command
+ */
+void handleTest(struct m_command *cmd) {
+	replyWithSspResponse(&cmd, SSP_RESPONSE_OK);
+}
+
 /**
  * Callback function triggered by an incoming message in either
  * the "hopper-request" or "validator-request" topic.
@@ -948,7 +955,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			if(isCommand(&cmd, "quit")) {
 				handleQuit(&cmd);
 			} else if(isCommand(&cmd, "test")) {
-				replyWithSspResponse(&cmd, SSP_RESPONSE_OK);
+				handleTest(&cmd);
 			} else {
 				// commands in here need the actual hardware
 
