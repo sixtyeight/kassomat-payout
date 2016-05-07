@@ -280,55 +280,95 @@ int replyWith(char *topic, char *format, ...) {
 	return 0;
 }
 
-/**
- * Helper function to publish "result=ok" to the given topic.
- */
-int replyOk(char *topic, char *responseMsgId, char *msgId) {
-	return replyWith(topic,
-			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"ok\"}",
-			responseMsgId, msgId);
+int replyWithPropertyError(struct m_command *cmd, char *name) {
+	char *responseMsgId = "unknown";
+	if(cmd->responseMsgId) {
+		responseMsgId = cmd->responseMsgId;
+	}
+
+	char *correlId = "unknown";
+	if(cmd->msgId) {
+		correlId = cmd->msgId;
+	}
+
+	return replyWith(cmd->responseTopic,
+			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"error\":\"Property '%s' missing or of wrong type\"}",
+			responseMsgId,
+			correlId,
+			name);
 }
 
-/**
- * Helper function to publish "result=failed" to the given topic.
- */
-int replyFailed(char *topic, char *responseMsgId, char *msgId) {
-	return replyWith(topic,
-			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"failed\"}",
-			responseMsgId, msgId);
-}
+int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
+	if(response == SSP_RESPONSE_OK) {
+		return replyWith(cmd->responseTopic, "{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"ok\"}",
+				cmd->responseMsgId,
+				cmd->msgId);
+	} else {
+		char *errorMsg;
 
-/**
- * Helper function to publish "accepted=true" to the given topic.
- */
-int replyAccepted(char *topic, char *responseMsgId, char *msgId) {
-	return replyWith(topic,
-			"{\"msgId\":\"%s\",\"correlId\":\"%s\",\"accepted\":\"true\"}",
-			responseMsgId, msgId);
+		switch(response) {
+			case SSP_RESPONSE_UNKNOWN_COMMAND:
+				errorMsg = "unknown command";
+				break;
+			case SSP_RESPONSE_INCORRECT_PARAMETERS:
+				errorMsg = "incorrect parameters";
+				break;
+			case SSP_RESPONSE_INVALID_PARAMETER:
+				errorMsg = "invalid parameter";
+				break;
+			case SSP_RESPONSE_COMMAND_NOT_PROCESSED:
+				errorMsg = "command not processed";
+				break;
+			case SSP_RESPONSE_SOFTWARE_ERROR:
+				errorMsg = "software error";
+				break;
+			case SSP_RESPONSE_CHECKSUM_ERROR:
+				errorMsg = "checksum error";
+				break;
+			case SSP_RESPONSE_FAILURE:
+				errorMsg = "failure";
+				break;
+			case SSP_RESPONSE_HEADER_FAILURE:
+				errorMsg = "header failure";
+				break;
+			case SSP_RESPONSE_KEY_NOT_SET:
+				errorMsg = "key not set";
+				break;
+			case SSP_RESPONSE_TIMEOUT:
+				errorMsg = "timeout";
+				break;
+			default:
+				errorMsg = "unknown";
+		}
+
+		return replyWith(cmd->responseTopic, "{\"msgId\":\"%s\",\"correlId\":\"%s\",\"sspError\":\"%s\"}",
+				cmd->responseMsgId,
+				cmd->msgId,
+				errorMsg);
+
+	}
 }
 
 /**
  * Handles the "quit" command.
  */
 void handleQuit(struct m_command *cmd) {
-	replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	receivedSignal = 1;
+	replyWithSspResponse(cmd, SSP_RESPONSE_OK); // :D
 }
 
 /**
  * Handles the "empty" command.
  */
 void handleEmpty(struct m_command *cmd) {
-	mc_ssp_empty(&cmd->device->sspC);
-	replyAccepted(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	replyWithSspResponse(cmd, mc_ssp_empty(&cmd->device->sspC));
 }
 
 /**
  * Handles the "smart-empty" command.
  */
 void handleSmartEmpty(struct m_command *cmd) {
-	mc_ssp_smart_empty(&cmd->device->sspC);
-	replyAccepted(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	replyWithSspResponse(cmd, mc_ssp_smart_empty(&cmd->device->sspC));
 }
 
 /**
@@ -345,16 +385,16 @@ void handlePayout(struct m_command *cmd) {
 
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
 	if(! json_is_number(jAmount)) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'amount' missing or not a number\"}",
-				cmd->msgId);
+		replyWithPropertyError(cmd, "amount");
 		return;
 	}
 
 	int amount = json_number_value(jAmount); // TODO: discards fraction
 
-	if (ssp6_payout(&cmd->device->sspC, amount, CURRENCY,
-			payoutOption) != SSP_RESPONSE_OK) {
-		// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+	SSP_RESPONSE_ENUM resp = ssp6_payout(&cmd->device->sspC, amount, CURRENCY,
+			payoutOption);
+
+	if (resp == SSP_RESPONSE_COMMAND_NOT_PROCESSED) {
 		char *error = NULL;
 		switch (cmd->device->sspC.ResponseData[1]) {
 		case 0x01:
@@ -376,7 +416,7 @@ void handlePayout(struct m_command *cmd) {
 
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", cmd->msgId, error);
 	} else {
-		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+		replyWithSspResponse(cmd, resp);
 	}
 }
 
@@ -395,16 +435,16 @@ void handleFloat(struct m_command *cmd) {
 
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
 	if(! json_is_number(jAmount)) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'amount' missing or not a number\"}",
-				cmd->msgId);
+		replyWithPropertyError(cmd, "amount");
 		return;
 	}
 
 	int amount = json_number_value(jAmount); // TODO: discards fraction
 
-	if (mc_ssp_float(&cmd->device->sspC, amount, CURRENCY,
-			payoutOption) != SSP_RESPONSE_OK) {
-		// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+	SSP_RESPONSE_ENUM resp = mc_ssp_float(&cmd->device->sspC, amount, CURRENCY,
+			payoutOption);
+
+	if (resp == SSP_RESPONSE_COMMAND_NOT_PROCESSED) {
 		char *error = NULL;
 		switch (cmd->device->sspC.ResponseData[1]) {
 		case 0x01:
@@ -426,7 +466,7 @@ void handleFloat(struct m_command *cmd) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}",
 				cmd->msgId, error);
 	} else {
-		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+		replyWithSspResponse(cmd, resp);
 	}
 }
 
@@ -451,8 +491,7 @@ void dbgDisplayInhibits(unsigned char inhibits) {
 void handleEnableChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
 	if(! json_is_string(jChannels)) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
-				cmd->msgId);
+		replyWithPropertyError(cmd, "channels");
 		return;
 	}
 
@@ -489,9 +528,9 @@ void handleEnableChannels(struct m_command *cmd) {
 		currentChannelInhibits |= 1 << 7;
 	}
 
-	SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&cmd->device->sspC, currentChannelInhibits, highChannels);
+	SSP_RESPONSE_ENUM resp = ssp6_set_inhibits(&cmd->device->sspC, currentChannelInhibits, highChannels);
 
-	if(r == SSP_RESPONSE_OK) {
+	if(resp == SSP_RESPONSE_OK) {
 		// okay, update the channelInhibits in the device structure with the new state
 		cmd->device->channelInhibits = currentChannelInhibits;
 
@@ -499,11 +538,9 @@ void handleEnableChannels(struct m_command *cmd) {
 			printf("enable-channels:\n");
 			dbgDisplayInhibits(currentChannelInhibits);
 		}
-
-		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
-	} else {
-		replyFailed(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	}
+
+	replyWithSspResponse(cmd, resp);
 }
 
 /**
@@ -512,8 +549,7 @@ void handleEnableChannels(struct m_command *cmd) {
 void handleDisableChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
 	if(! json_is_string(jChannels)) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
-				cmd->msgId);
+		replyWithPropertyError(cmd, "channels");
 		return;
 	}
 
@@ -550,9 +586,9 @@ void handleDisableChannels(struct m_command *cmd) {
 		currentChannelInhibits &= ~(1 << 7);
 	}
 
-	SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&cmd->device->sspC, currentChannelInhibits, highChannels);
+	SSP_RESPONSE_ENUM resp = ssp6_set_inhibits(&cmd->device->sspC, currentChannelInhibits, highChannels);
 
-	if(r == SSP_RESPONSE_OK) {
+	if(resp == SSP_RESPONSE_OK) {
 		// okay, update the channelInhibits in the device structure with the new state
 		cmd->device->channelInhibits = currentChannelInhibits;
 
@@ -560,23 +596,18 @@ void handleDisableChannels(struct m_command *cmd) {
 			printf("disable-channels:\n");
 			dbgDisplayInhibits(currentChannelInhibits);
 		}
-
-		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
-	} else {
-		replyFailed(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	}
+
+	replyWithSspResponse(cmd, resp);
 }
 
 /**
  * Handles the "inhibit-channels" command.
  */
 void handleInhibitChannels(struct m_command *cmd) {
-	char *responseTopic = cmd->responseTopic;
-
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
 	if(! json_is_string(jChannels)) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
-				cmd->msgId);
+		replyWithPropertyError(cmd, "channels");
 		return;
 	}
 
@@ -611,31 +642,21 @@ void handleInhibitChannels(struct m_command *cmd) {
 		lowChannels &= ~(1 << 7);
 	}
 
-	SSP_RESPONSE_ENUM r = ssp6_set_inhibits(&cmd->device->sspC, lowChannels, highChannels);
-
-	if(r == SSP_RESPONSE_OK) {
-		replyOk(responseTopic, cmd->responseMsgId, cmd->msgId);
-	} else {
-		replyFailed(responseTopic, cmd->responseMsgId, cmd->msgId);
-	}
-
-	free(channels);
+	replyWithSspResponse(cmd, ssp6_set_inhibits(&cmd->device->sspC, lowChannels, highChannels));
 }
 
 /**
  * Handles the "enable" command.
  */
 void handleEnable(struct m_command *cmd) {
-	ssp6_enable(&cmd->device->sspC);
-	replyAccepted(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	replyWithSspResponse(cmd, ssp6_enable(&cmd->device->sspC));
 }
 
 /**
  * Handles the "disable" command.
  */
 void handleDisable(struct m_command *cmd) {
-	ssp6_disable(&cmd->device->sspC);
-	replyAccepted(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	replyWithSspResponse(cmd, ssp6_disable(&cmd->device->sspC));
 }
 
 /**
@@ -644,12 +665,14 @@ void handleDisable(struct m_command *cmd) {
 void handleSetDenominationLevels(struct m_command *cmd) {
 	json_t *jLevel = json_object_get(cmd->jsonMessage, "level");
 	if(! json_is_number(jLevel)) {
-		// TODO
+		replyWithPropertyError(cmd, "level");
+		return;
 	}
 
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
 	if(! json_is_number(jAmount)) {
-		// TODO
+		replyWithPropertyError(cmd, "amount");
+		return;
 	}
 
 	int amount = json_number_value(jLevel); // TODO: discarding fractions!
@@ -668,14 +691,11 @@ void handleSetDenominationLevels(struct m_command *cmd) {
 		 * otherwise it works like the not existing "increment denomination level" command.
 		 */
 
-		mc_ssp_set_denomination_level(&cmd->device->sspC, amount, 0, CURRENCY); // ignore the result for now
+		// ignore the result for now. we could not do much anyway now.
+		mc_ssp_set_denomination_level(&cmd->device->sspC, amount, 0, CURRENCY);
 	}
 
-	if (mc_ssp_set_denomination_level(&cmd->device->sspC, amount, level, CURRENCY) == SSP_RESPONSE_OK) {
-		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
-	} else {
-		replyFailed(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
-	}
+	replyWithSspResponse(cmd, mc_ssp_set_denomination_level(&cmd->device->sspC, amount, level, CURRENCY));
 }
 
 /**
@@ -683,8 +703,15 @@ void handleSetDenominationLevels(struct m_command *cmd) {
  */
 void handleGetAllLevels(struct m_command *cmd) {
 	char *json = NULL;
-	mc_ssp_get_all_levels(&cmd->device->sspC, &json);
-	replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->msgId, json);
+
+	SSP_RESPONSE_ENUM resp = mc_ssp_get_all_levels(&cmd->device->sspC, &json);
+
+	if(resp == SSP_RESPONSE_OK) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->msgId, json);
+	} else {
+		replyWithSspResponse(cmd, resp);
+	}
+
 	free(json);
 }
 
@@ -693,8 +720,14 @@ void handleGetAllLevels(struct m_command *cmd) {
  */
 void handleGetFirmwareVersion(struct m_command *cmd) {
 	char firmwareVersion[100] = { 0 };
-	mc_ssp_get_firmware_version(&cmd->device->sspC, &firmwareVersion[0]);
-	replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}", cmd->msgId, firmwareVersion);
+
+	SSP_RESPONSE_ENUM resp = mc_ssp_get_firmware_version(&cmd->device->sspC, &firmwareVersion[0]);
+
+	if(resp == SSP_RESPONSE_OK) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}", cmd->msgId, firmwareVersion);
+	} else {
+		replyWithSspResponse(cmd, resp);
+	}
 }
 
 /**
@@ -702,9 +735,15 @@ void handleGetFirmwareVersion(struct m_command *cmd) {
  */
 void handleGetDatasetVersion(struct m_command *cmd) {
 	char datasetVersion[100] = { 0 };
-	mc_ssp_get_dataset_version(&cmd->device->sspC, &datasetVersion[0]);
-	replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}",
-			cmd->msgId, datasetVersion);
+
+	SSP_RESPONSE_ENUM resp = mc_ssp_get_dataset_version(&cmd->device->sspC, &datasetVersion[0]);
+
+	if(resp == SSP_RESPONSE_OK) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}",
+				cmd->msgId, datasetVersion);
+	} else {
+		replyWithSspResponse(cmd, resp);
+	}
 }
 
 /**
@@ -712,10 +751,12 @@ void handleGetDatasetVersion(struct m_command *cmd) {
  */
 void handleLastRejectNote(struct m_command *cmd) {
 	unsigned char reasonCode;
-	char *reason = NULL;
 
-	if (mc_ssp_last_reject_note(&cmd->device->sspC, &reasonCode)
-			== SSP_RESPONSE_OK) {
+	SSP_RESPONSE_ENUM resp = mc_ssp_last_reject_note(&cmd->device->sspC, &reasonCode);
+
+	if (resp == SSP_RESPONSE_OK) {
+		char *reason = NULL;
+
 		switch (reasonCode) {
 		case 0x00: // Note accepted
 			reason = "note accepted";
@@ -805,19 +846,15 @@ void handleLastRejectNote(struct m_command *cmd) {
 			reason = "unable to stack note";
 			break;
 		default: // not defined in API doc
+			reason = "undefined in API";
 			break;
 		}
-		if (reason != NULL) {
-			replyWith(cmd->responseTopic,
-					"{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}",
-					cmd->msgId, reason, reasonCode);
-		} else {
-			replyWith(cmd->responseTopic,
-					"{\"correlId\":\"%s\",\"reason\":\"undefined\",\"code\":%ld}",
-					cmd->msgId, reasonCode);
-		}
+
+		replyWith(cmd->responseTopic,
+				"{\"correlId\":\"%s\",\"reason\":\"%s\",\"code\":%ld}",
+				cmd->msgId, reason, reasonCode);
 	} else {
-		replyWith(cmd->responseTopic, "{\"timeout\":\"last reject note\"}");
+		replyWithSspResponse(cmd, resp);
 	}
 }
 
@@ -833,8 +870,9 @@ void handleChannelSecurityData(struct m_command *cmd) {
  * the "hopper-request" or "validator-request" topic.
  */
 void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
-	if (r == NULL)
+	if (r == NULL) {
 		return;
+	}
 
 	hardwareWaitTime();
 
@@ -845,21 +883,27 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 	if (reply->type == REDIS_REPLY_ARRAY && reply->elements == 3) {
 		if (strcmp(reply->element[0]->str, "subscribe") != 0) {
 			char *topic = reply->element[1]->str;
-			struct m_device *device = NULL;
+			struct m_command cmd;
 
 			// decide to which topic the response should be sent to
-			char *responseTopic = NULL;
 			if (strcmp(topic, "validator-request") == 0) {
-				device = &m->validator;
-				responseTopic = "validator-response";
+				cmd.device = &m->validator;
+				cmd.responseTopic = "validator-response";
 			} else if (strcmp(topic, "hopper-request") == 0) {
-				device = &m->hopper;
-				responseTopic = "hopper-response";
+				cmd.device = &m->hopper;
+				cmd.responseTopic = "hopper-response";
 			} else {
+				printf("error: cbOnRequestMessage subscribed for a topic we don't have a response topic\n");
 				return;
 			}
 
-			struct m_command cmd;
+			// generate a new 'msgId' for the response itself
+			uuid_t uuid;
+			uuid_generate_time_safe(uuid);
+			char responseMsgId[37] = { 0 }; // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
+			uuid_unparse_lower(uuid, responseMsgId);
+			cmd.responseMsgId = (char *) &responseMsgId; // points to a local variable. only valid until this block is exited!
+
 			char *message = reply->element[2]->str;
 
 			// try to parse the message as json
@@ -867,7 +911,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			cmd.jsonMessage = json_loads(message, 0, &error);
 
 			if(! cmd.jsonMessage) {
-				replyWith(responseTopic,
+				replyWith(cmd.responseTopic,
 						"{\"error\":\"could not parse json\",\"reason\":\"%s\",\"line\":%d}",
 						error.text, error.line);
 				// no need to json_decref(cmd.jsonMessage) here
@@ -877,40 +921,31 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// extract the 'msgId' property (used as the 'correlId' in a response)
 		    json_t *jMsgId = json_object_get(cmd.jsonMessage, "msgId");
 		    if(! json_is_string(jMsgId)) {
-				replyWith(responseTopic, "{\"error\":\"property 'msgId' missing or not a string\"}");
+		    	replyWithPropertyError(&cmd, "msgId");
 		    	json_decref(cmd.jsonMessage);
 		    	return;
+		    } else {
+				cmd.msgId = (char *) json_string_value(jMsgId); // cast for now
 		    }
-			cmd.msgId = (char *) json_string_value(jMsgId); // cast for now
 
 		    // extract the 'cmd' property
 		    json_t *jCmd = json_object_get(cmd.jsonMessage, "cmd");
 		    if(! json_is_string(jCmd)) {
-				replyWith(responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'cmd' missing or not a string\"}",
-						cmd.msgId);
+		    	replyWithPropertyError(&cmd, "cmd");
 		    	json_decref(cmd.jsonMessage);
 		    	return;
+		    } else {
+				cmd.command = (char *) json_string_value(jCmd); // cast for now
 		    }
 
-			// generate a new 'msgId' for the response itself
-			uuid_t uuid;
-			uuid_generate_time_safe(uuid);
-			char responseMsgId[37] = { 0 }; // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
-			uuid_unparse_lower(uuid, responseMsgId);
-
-			// prepare a nice small structure with all the data necessary
-			// for the command handler functions.
-			cmd.command = (char *) json_string_value(jCmd); // cast for now
-			cmd.responseMsgId = responseMsgId;
-			cmd.responseTopic = responseTopic;
-			cmd.device = device;
-
-			printf("processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
-					cmd.command, cmd.msgId, topic, cmd.device->name);
-
+		    // proper json structure, properties cmd and msgId have been verified here.
+		    // also we know which device is used and where we should send our response to.
 			// finally try to dispatch the message to the appropriate command handler
 			// function if any. in case we don't know that command we respond with a
 			// generic error response.
+
+			printf("processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
+					cmd.command, cmd.msgId, topic, cmd.device->name);
 
 			if(isCommand(message, "quit")) {
 				handleQuit(&cmd);
@@ -920,7 +955,8 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 			if(! m->deviceAvailable) {
 				// TODO: an unknown command without the actual hardware will also receive this response :-/
-				replyWith(responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.msgId);
+				printf("rejecting command from msgId='%s', hardware unavailable!\n", cmd.msgId);
+				replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.msgId);
 			} else {
 				if(isCommand(message, "empty")) {
 					handleEmpty(&cmd);
@@ -953,7 +989,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				} else if (isCommand(message, "last-reject-note")) {
 					handleLastRejectNote(&cmd);
 				} else {
-					replyWith(responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
+					replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
 							cmd.msgId, message, cmd.command);
 				}
 			}
@@ -1150,6 +1186,7 @@ void hopperEventHandler(struct m_device *device,
 			if (poll->events[i].data1 > 0) {
 				publishHopperEvent("{\"event\":\"read\",\"channel\":%ld}", poll->events[i].data1);
 			} else {
+				// this is reported more than once for a single note
 				publishHopperEvent("{\"event\":\"reading\"}");
 			}
 			break;
@@ -1857,6 +1894,8 @@ SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, i
 	// extract the device response code
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
+	// not data to parse
+
 	return resp;
 }
 
@@ -1971,6 +2010,8 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 	// extract the device response code
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
+	// no data to parse
+
 	return resp;
 }
 
@@ -2044,9 +2085,7 @@ SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC) {
 		for(int i = 0; i < numChannels; i++) {
 			printf("security status: channel %d -> %d\n", 1 + i, sspC->ResponseData[2 + i]);
 		}
-
-		return resp;
-	} else {
-		return resp;
 	}
+
+	return resp;
 }
