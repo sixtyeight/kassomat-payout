@@ -763,7 +763,7 @@ void handleGetDatasetVersion(struct m_command *cmd) {
 	SSP_RESPONSE_ENUM resp = mc_ssp_get_dataset_version(&cmd->device->sspC, &datasetVersion[0]);
 
 	if(resp == SSP_RESPONSE_OK) {
-		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"]}",
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"version\":\"%s\"}",
 				cmd->correlId, datasetVersion);
 	} else {
 		replyWithSspResponse(cmd, resp);
@@ -1819,6 +1819,8 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 9;
 	sspC->CommandData[0] = SSP_CMD_SET_REFILL_MODE;
 
+	// these are all magic constants, no idea why ITL specified it that way
+	// in the protocol.
 	sspC->CommandData[1] = 0x05;
 	sspC->CommandData[2] = 0x81;
 	sspC->CommandData[3] = 0x10;
