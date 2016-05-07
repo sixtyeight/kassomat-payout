@@ -75,6 +75,7 @@ struct m_metacash {
 
 struct m_command {
 	char *message;
+	json_t *jsonMessage;
 
 	char *command;
 	char *msgId;
@@ -342,38 +343,40 @@ void handlePayout(struct m_command *cmd) {
 		payoutOption = SSP6_OPTION_BYTE_TEST;
 	}
 
-	char *amountToken = "\"amount\":";
-	char *amountStart = strstr(cmd->message, amountToken);
-	if (amountStart != NULL) {
-		amountStart = amountStart + strlen(amountToken);
-		int amount = atoi(amountStart);
+	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
+	if(! json_is_number(jAmount)) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'amount' missing or not a number\"}",
+				cmd->responseMsgId, cmd->msgId);
+		return;
+	}
 
-		if (ssp6_payout(&cmd->device->sspC, amount, CURRENCY,
-				payoutOption) != SSP_RESPONSE_OK) {
-			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-			char *error = NULL;
-			switch (cmd->device->sspC.ResponseData[1]) {
-			case 0x01:
-				error = "not enough value in smart payout";
-				break;
-			case 0x02:
-				error = "can't pay exact amount";
-				break;
-			case 0x03:
-				error = "smart payout busy";
-				break;
-			case 0x04:
-				error = "smart payout disabled";
-				break;
-			default:
-				error = "unknown";
-				break;
-			}
+	int amount = json_number_value(jAmount); // TODO: discards fraction
 
-			replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", cmd->msgId, error);
-		} else {
-			replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	if (ssp6_payout(&cmd->device->sspC, amount, CURRENCY,
+			payoutOption) != SSP_RESPONSE_OK) {
+		// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+		char *error = NULL;
+		switch (cmd->device->sspC.ResponseData[1]) {
+		case 0x01:
+			error = "not enough value in smart payout";
+			break;
+		case 0x02:
+			error = "can't pay exact amount";
+			break;
+		case 0x03:
+			error = "smart payout busy";
+			break;
+		case 0x04:
+			error = "smart payout disabled";
+			break;
+		default:
+			error = "unknown";
+			break;
 		}
+
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}", cmd->msgId, error);
+	} else {
+		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	}
 }
 
@@ -390,38 +393,40 @@ void handleFloat(struct m_command *cmd) {
 		payoutOption = SSP6_OPTION_BYTE_TEST;
 	}
 
-	char *amountToken = "\"amount\":";
-	char *amountStart = strstr(cmd->message, amountToken);
-	if (amountStart != NULL) {
-		amountStart = amountStart + strlen(amountToken);
-		int amount = atoi(amountStart);
+	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
+	if(! json_is_number(jAmount)) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'amount' missing or not a number\"}",
+				cmd->responseMsgId, cmd->msgId);
+		return;
+	}
 
-		if (mc_ssp_float(&cmd->device->sspC, amount, CURRENCY,
-				payoutOption) != SSP_RESPONSE_OK) {
-			// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
-			char *error = NULL;
-			switch (cmd->device->sspC.ResponseData[1]) {
-			case 0x01:
-				error = "not enough value in smart payout";
-				break;
-			case 0x02:
-				error = "can't pay exact amount";
-				break;
-			case 0x03:
-				error = "smart payout busy";
-				break;
-			case 0x04:
-				error = "smart payout disabled";
-				break;
-			default:
-				error = "unknown";
-				break;
-			}
-			replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}",
-					cmd->msgId, error);
-		} else {
-			replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
+	int amount = json_number_value(jAmount); // TODO: discards fraction
+
+	if (mc_ssp_float(&cmd->device->sspC, amount, CURRENCY,
+			payoutOption) != SSP_RESPONSE_OK) {
+		// when the payout fails it should return 0xf5 0xNN, where 0xNN is an error code
+		char *error = NULL;
+		switch (cmd->device->sspC.ResponseData[1]) {
+		case 0x01:
+			error = "not enough value in smart payout";
+			break;
+		case 0x02:
+			error = "can't pay exact amount";
+			break;
+		case 0x03:
+			error = "smart payout busy";
+			break;
+		case 0x04:
+			error = "smart payout disabled";
+			break;
+		default:
+			error = "unknown";
+			break;
 		}
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"%s\"}",
+				cmd->msgId, error);
+	} else {
+		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	}
 }
 
@@ -444,26 +449,18 @@ void dbgDisplayInhibits(unsigned char inhibits) {
  * Handles the "enable-channels" command.
  */
 void handleEnableChannels(struct m_command *cmd) {
-	char *responseTopic = cmd->responseTopic;
-	const char *channelsToken = "\"channels\":\"";
+	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
+	if(! json_is_string(jChannels)) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
+				cmd->responseMsgId, cmd->msgId);
+		return;
+	}
 
-	char *channelsStart = strstr(cmd->message, channelsToken);
-	if (channelsStart == NULL) {
-		replyWith(responseTopic, "{\"error\":\"channels missing\"}");
-		return;
-	}
-	channelsStart= channelsStart + strlen(channelsToken);
-	char *channelsEnd = strstr(channelsStart, "\"");
-	if (channelsEnd == NULL) {
-		replyWith(responseTopic, "{\"error\":\"channels not a string\"}");
-		return;
-	}
+	char *channels = (char *) json_string_value(jChannels);
 
 	// this will be updated and written back to the device state
 	// if the update succeeds
 	unsigned char currentChannelInhibits = cmd->device->channelInhibits;
-
-	char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
 	unsigned char highChannels = 0xFF; // actually not in use
 
 	// 8 channels for now, set the bit to 1 for each requested channel
@@ -503,38 +500,28 @@ void handleEnableChannels(struct m_command *cmd) {
 			dbgDisplayInhibits(currentChannelInhibits);
 		}
 
-		replyOk(responseTopic, cmd->responseMsgId, cmd->msgId);
+		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	} else {
-		replyFailed(responseTopic, cmd->responseMsgId, cmd->msgId);
+		replyFailed(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	}
-
-	free(channels);
 }
 
 /**
  * Handles the "disable-channels" command.
  */
 void handleDisableChannels(struct m_command *cmd) {
-	char *responseTopic = cmd->responseTopic;
-	const char *channelsToken = "\"channels\":\"";
+	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
+	if(! json_is_string(jChannels)) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'channels' missing or not a string\"}",
+				cmd->responseMsgId, cmd->msgId);
+		return;
+	}
 
-	char *channelsStart = strstr(cmd->message, channelsToken);
-	if (channelsStart == NULL) {
-		replyWith(responseTopic, "{\"error\":\"channels missing\"}");
-		return;
-	}
-	channelsStart= channelsStart + strlen(channelsToken);
-	char *channelsEnd = strstr(channelsStart, "\"");
-	if (channelsEnd == NULL) {
-		replyWith(responseTopic, "{\"error\":\"channels not a string\"}");
-		return;
-	}
+	char *channels = (char *) json_string_value(jChannels);
 
 	// this will be updated and written back to the device state
 	// if the update succeeds
 	unsigned char currentChannelInhibits = cmd->device->channelInhibits;
-
-	char *channels = strndup(channelsStart, (channelsEnd - channelsStart));
 	unsigned char highChannels = 0xFF; // actually not in use
 
 	// 8 channels for now, set the bit to 0 for each requested channel
@@ -574,12 +561,10 @@ void handleDisableChannels(struct m_command *cmd) {
 			dbgDisplayInhibits(currentChannelInhibits);
 		}
 
-		replyOk(responseTopic, cmd->responseMsgId, cmd->msgId);
+		replyOk(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	} else {
-		replyFailed(responseTopic, cmd->responseMsgId, cmd->msgId);
+		replyFailed(cmd->responseTopic, cmd->responseMsgId, cmd->msgId);
 	}
-
-	free(channels);
 }
 
 /**
@@ -662,21 +647,18 @@ void handleDisable(struct m_command *cmd) {
  * Handles the "set-denomination-levels" command.
  */
 void handleSetDenominationLevels(struct m_command *cmd) {
-	char *levelToken = "\"level\":";
-	char *levelStart = strstr(cmd->message, levelToken);
-	int level;
-	if (levelStart != NULL) {
-		levelStart = levelStart + strlen(levelToken);
-		level = atoi(levelStart);
+	json_t *jLevel = json_object_get(cmd->jsonMessage, "level");
+	if(! json_is_number(jLevel)) {
+		// TODO
 	}
 
-	char *amountToken = "\"amount\":";
-	char *amountStart = strstr(cmd->message, amountToken);
-	int amount;
-	if (amountStart != NULL) {
-		amountStart = amountStart + strlen(amountToken);
-		amount = atoi(amountStart);
+	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
+	if(! json_is_number(jAmount)) {
+		// TODO
 	}
+
+	int amount = json_number_value(jLevel); // TODO: discarding fractions!
+	int level = json_number_value(jAmount); // TODO: discarding fractions!
 
 	if(level > 0) {
 		/* Quote from the spec -.-
@@ -882,25 +864,40 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				return;
 			}
 
+			struct m_command cmd;
 			char *message = reply->element[2]->str;
 
-			// extract the msgId from the message (used as the correlId in the response)
-			const char *msgIdToken = "\"msgId\":\"";
-			char *msgIdStart = strstr(message, msgIdToken);
-			if (msgIdStart == NULL) {
-				replyWith(responseTopic, "{\"error\":\"msgId missing\"}");
-				return;
-			}
-			msgIdStart = msgIdStart + strlen(msgIdToken);
-			char *msgIdEnd = strstr(msgIdStart, "\"");
-			if (msgIdEnd == NULL) {
-				replyWith(responseTopic, "{\"error\":\"msgId not a string\"}");
+			// try to parse the message as json
+			json_error_t error;
+			cmd.jsonMessage = json_loads(message, 0, &error);
+
+			if(! cmd.jsonMessage) {
+				replyWith(responseTopic,
+						"{\"error\":\"could not parse json\",\"reason\":\"%s\",\"line\":%d}",
+						error.text, error.line);
+				// no need to json_decref(cmd.jsonMessage) here
 				return;
 			}
 
-			char *msgId = strndup(msgIdStart, (msgIdEnd - msgIdStart));
+			// extract the 'msgId' property (used as the 'correlId' in a response)
+		    json_t *jMsgId = json_object_get(cmd.jsonMessage, "msgId");
+		    if(! json_is_string(jMsgId)) {
+				replyWith(responseTopic, "{\"error\":\"property 'msgId' missing or not a string\"}");
+		    	json_decref(cmd.jsonMessage);
+		    	return;
+		    }
+			cmd.msgId = (char *) json_string_value(jMsgId); // cast for now
 
-			// generate a new msgId for the response
+		    // extract the 'cmd' property
+		    json_t *jCmd = json_object_get(cmd.jsonMessage, "cmd");
+		    if(! json_is_string(jCmd)) {
+				replyWith(responseTopic, "{\"correlId\":\"%s\",\"error\":\"property 'cmd' missing or not a string\"}",
+						cmd.msgId);
+		    	json_decref(cmd.jsonMessage);
+		    	return;
+		    }
+
+			// generate a new 'msgId' for the response itself
 			uuid_t uuid;
 			uuid_generate_time_safe(uuid);
 			char responseMsgId[37] = { 0 }; // ex. "1b4e28ba-2fa1-11d2-883f-0016d3cca427" + "\0"
@@ -908,56 +905,66 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 			// prepare a nice small structure with all the data necessary
 			// for the command handler functions.
-			struct m_command cmd;
-			cmd.message = message;
-			cmd.msgId = msgId;
+			cmd.command = (char *) json_string_value(jCmd); // cast for now
 			cmd.responseMsgId = responseMsgId;
 			cmd.responseTopic = responseTopic;
 			cmd.device = device;
 
-			printf("responding with correlId=\"%s\" and msgId=\"%s\"\n", msgId,
-					responseMsgId);
+			printf("processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
+					cmd.command, cmd.msgId, topic, cmd.device->name);
 
 			// finally try to dispatch the message to the appropriate command handler
 			// function if any. in case we don't know that command we respond with a
 			// generic error response.
+
 			if(isCommand(message, "quit")) {
 				handleQuit(&cmd);
-			} else if (isCommand(message, "empty")) {
-				handleEmpty(&cmd);
-			} else if (isCommand(message, "smart-empty")) {
-				handleSmartEmpty(&cmd);
-			} else if (isCommand(message, "enable")) {
-				handleEnable(&cmd);
-			} else if (isCommand(message, "disable")) {
-				handleDisable(&cmd);
-			} else if(isCommand(message, "enable-channels")) {
-				handleEnableChannels(&cmd);
-			} else if(isCommand(message, "disable-channels")) {
-				handleDisableChannels(&cmd);
-			} else if(isCommand(message, "inhibit-channels")) {
-				handleInhibitChannels(&cmd);
-			} else if (isCommand(message, "test-float") || isCommand(message, "do-float")) {
-				handleFloat(&cmd);
-			} else if (isCommand(message, "test-payout") || isCommand(message, "do-payout")) {
-				handlePayout(&cmd);
-			} else if (isCommand(message, "get-firmware-version")) {
-				handleGetFirmwareVersion(&cmd);
-			} else if (isCommand(message, "get-dataset-version")) {
-				handleGetDatasetVersion(&cmd);
-			} else if (isCommand(message, "channel-security-data")) {
-				handleChannelSecurityData(&cmd);
-			} else if (isCommand(message, "get-all-levels")) {
-				handleGetAllLevels(&cmd);
-			} else if (isCommand(message, "set-denomination-level")) {
-				handleSetDenominationLevels(&cmd);
-			} else if (isCommand(message, "last-reject-note")) {
-				handleLastRejectNote(&cmd);
-			} else {
-				replyWith(responseTopic, "{\"error\":\"unknown cmd\"}", message);
 			}
 
-			free(msgId);
+			// commands below need the actual hardware
+
+			if(! m->deviceAvailable) {
+				// TODO: an unknown command without the actual hardware will also receive this response :-/
+				replyWith(responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.msgId);
+			} else {
+				if(isCommand(message, "empty")) {
+					handleEmpty(&cmd);
+				} else if (isCommand(message, "smart-empty")) {
+					handleSmartEmpty(&cmd);
+				} else if (isCommand(message, "enable")) {
+					handleEnable(&cmd);
+				} else if (isCommand(message, "disable")) {
+					handleDisable(&cmd);
+				} else if(isCommand(message, "enable-channels")) {
+					handleEnableChannels(&cmd);
+				} else if(isCommand(message, "disable-channels")) {
+					handleDisableChannels(&cmd);
+				} else if(isCommand(message, "inhibit-channels")) {
+					handleInhibitChannels(&cmd);
+				} else if (isCommand(message, "test-float") || isCommand(message, "do-float")) {
+					handleFloat(&cmd);
+				} else if (isCommand(message, "test-payout") || isCommand(message, "do-payout")) {
+					handlePayout(&cmd);
+				} else if (isCommand(message, "get-firmware-version")) {
+					handleGetFirmwareVersion(&cmd);
+				} else if (isCommand(message, "get-dataset-version")) {
+					handleGetDatasetVersion(&cmd);
+				} else if (isCommand(message, "channel-security-data")) {
+					handleChannelSecurityData(&cmd);
+				} else if (isCommand(message, "get-all-levels")) {
+					handleGetAllLevels(&cmd);
+				} else if (isCommand(message, "set-denomination-level")) {
+					handleSetDenominationLevels(&cmd);
+				} else if (isCommand(message, "last-reject-note")) {
+					handleLastRejectNote(&cmd);
+				} else {
+					replyWith(responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
+							cmd.msgId, message, cmd.command);
+				}
+			}
+
+			// this will also free the other json objects associated with it
+		    json_decref(cmd.jsonMessage);
 		}
 	}
 }
@@ -1530,9 +1537,8 @@ int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	{
 		struct stat buffer;
 		int fildes = open(metacash->serialDevice, O_RDWR);
-		if (fildes == 0) {
-			printf("ERROR: device %s not found\n", metacash->serialDevice);
-
+		if (fildes <= 0) {
+			printf("ERROR: opening device %s failed: %s\n", metacash->serialDevice, strerror(errno));
 			return 1;
 		}
 
