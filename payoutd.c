@@ -377,12 +377,12 @@ void handlePayout(struct m_command *cmd) {
 	}
 
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
-	if(! json_is_number(jAmount)) {
+	if(! json_is_integer(jAmount)) {
 		replyWithPropertyError(cmd, "amount");
 		return;
 	}
 
-	int amount = json_number_value(jAmount); // TODO: discards fraction
+	int amount = json_integer_value(jAmount);
 
 	SSP_RESPONSE_ENUM resp = ssp6_payout(&cmd->device->sspC, amount, CURRENCY,
 			payoutOption);
@@ -427,12 +427,12 @@ void handleFloat(struct m_command *cmd) {
 	}
 
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
-	if(! json_is_number(jAmount)) {
+	if(! json_is_integer(jAmount)) {
 		replyWithPropertyError(cmd, "amount");
 		return;
 	}
 
-	int amount = json_number_value(jAmount); // TODO: discards fraction
+	int amount = json_integer_value(jAmount);
 
 	SSP_RESPONSE_ENUM resp = mc_ssp_float(&cmd->device->sspC, amount, CURRENCY,
 			payoutOption);
@@ -657,19 +657,19 @@ void handleDisable(struct m_command *cmd) {
  */
 void handleSetDenominationLevels(struct m_command *cmd) {
 	json_t *jLevel = json_object_get(cmd->jsonMessage, "level");
-	if(! json_is_number(jLevel)) {
+	if(! json_is_integer(jLevel)) {
 		replyWithPropertyError(cmd, "level");
 		return;
 	}
 
 	json_t *jAmount = json_object_get(cmd->jsonMessage, "amount");
-	if(! json_is_number(jAmount)) {
+	if(! json_is_integer(jAmount)) {
 		replyWithPropertyError(cmd, "amount");
 		return;
 	}
 
-	int amount = json_number_value(jLevel); // TODO: discarding fractions!
-	int level = json_number_value(jAmount); // TODO: discarding fractions!
+	int amount = json_integer_value(jLevel);
+	int level = json_integer_value(jAmount);
 
 	if(level > 0) {
 		/* Quote from the spec -.-
