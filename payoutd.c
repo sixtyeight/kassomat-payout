@@ -889,7 +889,7 @@ void handleChannelSecurityData(struct m_command *cmd) {
 	mc_ssp_channel_security_data(&cmd->device->sspC);
 }
 
-/*
+/**
  * Handles the "test" command
  */
 void handleTest(struct m_command *cmd) {
