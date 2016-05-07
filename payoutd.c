@@ -74,7 +74,6 @@ struct m_metacash {
 };
 
 struct m_command {
-	char *message;
 	json_t *jsonMessage;
 
 	char *command;
@@ -213,14 +212,8 @@ void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
 /**
  * Test if the message contains the "cmd":"(command)" property
  */
-int isCommand(char *message, const char *command) {
-	char *commandPattern;
-
-	asprintf(&commandPattern, "\"cmd\":\"%s\"", command);
-	char *found = strstr(message, commandPattern);
-	free(commandPattern);
-
-	return found != 0;
+int isCommand(struct m_command *cmd, const char *command) {
+	return ! strcmp(cmd->command, command);
 }
 
 /**
@@ -377,7 +370,7 @@ void handleSmartEmpty(struct m_command *cmd) {
 void handlePayout(struct m_command *cmd) {
 	int payoutOption = 0;
 
-	if (isCommand(cmd->message, "do-payout")) {
+	if (isCommand(cmd, "do-payout")) {
 		payoutOption = SSP6_OPTION_BYTE_DO;
 	} else {
 		payoutOption = SSP6_OPTION_BYTE_TEST;
@@ -427,7 +420,7 @@ void handleFloat(struct m_command *cmd) {
 	// basically a copy of do/test-payout ...
 	int payoutOption = 0;
 
-	if (isCommand(cmd->message, "do-float")) {
+	if (isCommand(cmd, "do-float")) {
 		payoutOption = SSP6_OPTION_BYTE_DO;
 	} else {
 		payoutOption = SSP6_OPTION_BYTE_TEST;
@@ -947,7 +940,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			printf("processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
 					cmd.command, cmd.msgId, topic, cmd.device->name);
 
-			if(isCommand(message, "quit")) {
+			if(isCommand(&cmd, "quit")) {
 				handleQuit(&cmd);
 			}
 
@@ -958,39 +951,39 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				printf("rejecting command from msgId='%s', hardware unavailable!\n", cmd.msgId);
 				replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.msgId);
 			} else {
-				if(isCommand(message, "empty")) {
+				if(isCommand(&cmd, "empty")) {
 					handleEmpty(&cmd);
-				} else if (isCommand(message, "smart-empty")) {
+				} else if (isCommand(&cmd, "smart-empty")) {
 					handleSmartEmpty(&cmd);
-				} else if (isCommand(message, "enable")) {
+				} else if (isCommand(&cmd, "enable")) {
 					handleEnable(&cmd);
-				} else if (isCommand(message, "disable")) {
+				} else if (isCommand(&cmd, "disable")) {
 					handleDisable(&cmd);
-				} else if(isCommand(message, "enable-channels")) {
+				} else if(isCommand(&cmd, "enable-channels")) {
 					handleEnableChannels(&cmd);
-				} else if(isCommand(message, "disable-channels")) {
+				} else if(isCommand(&cmd, "disable-channels")) {
 					handleDisableChannels(&cmd);
-				} else if(isCommand(message, "inhibit-channels")) {
+				} else if(isCommand(&cmd, "inhibit-channels")) {
 					handleInhibitChannels(&cmd);
-				} else if (isCommand(message, "test-float") || isCommand(message, "do-float")) {
+				} else if (isCommand(&cmd, "test-float") || isCommand(&cmd, "do-float")) {
 					handleFloat(&cmd);
-				} else if (isCommand(message, "test-payout") || isCommand(message, "do-payout")) {
+				} else if (isCommand(&cmd, "test-payout") || isCommand(&cmd, "do-payout")) {
 					handlePayout(&cmd);
-				} else if (isCommand(message, "get-firmware-version")) {
+				} else if (isCommand(&cmd, "get-firmware-version")) {
 					handleGetFirmwareVersion(&cmd);
-				} else if (isCommand(message, "get-dataset-version")) {
+				} else if (isCommand(&cmd, "get-dataset-version")) {
 					handleGetDatasetVersion(&cmd);
-				} else if (isCommand(message, "channel-security-data")) {
+				} else if (isCommand(&cmd, "channel-security-data")) {
 					handleChannelSecurityData(&cmd);
-				} else if (isCommand(message, "get-all-levels")) {
+				} else if (isCommand(&cmd, "get-all-levels")) {
 					handleGetAllLevels(&cmd);
-				} else if (isCommand(message, "set-denomination-level")) {
+				} else if (isCommand(&cmd, "set-denomination-level")) {
 					handleSetDenominationLevels(&cmd);
-				} else if (isCommand(message, "last-reject-note")) {
+				} else if (isCommand(&cmd, "last-reject-note")) {
 					handleLastRejectNote(&cmd);
 				} else {
 					replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
-							cmd.msgId, message, cmd.command);
+							cmd.msgId, cmd.command);
 				}
 			}
 
