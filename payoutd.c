@@ -46,6 +46,9 @@ redisAsyncContext *redisSubscribeCtx = NULL;	// redis context used for subscribi
 
 struct m_metacash;
 
+/**
+ * Structure which describes an actual ITL device.
+ */
 struct m_device {
 	int id;
 	char *name;
@@ -57,6 +60,10 @@ struct m_device {
 	void (*eventHandlerFn) (struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 };
 
+/**
+ * Structure which contains the generic setup and
+ * the device structures for our two ITL devices.
+ */
 struct m_metacash {
 	int quit;
 	int deviceAvailable;
@@ -73,6 +80,10 @@ struct m_metacash {
 	struct m_device validator; // nv200 + smart payout devices
 };
 
+/**
+ * Structure which describes an actual command which we
+ * received in one of our request topics.
+ */
 struct m_command {
 	json_t *jsonMessage;
 
@@ -273,6 +284,10 @@ int replyWith(char *topic, char *format, ...) {
 	return 0;
 }
 
+/**
+ * Helper function to publish a reply to a message which was missing a
+ * mandatory property (or the property was of the wrong type).
+ */
 int replyWithPropertyError(struct m_command *cmd, char *name) {
 	char *msgId = "unknown";
 	if(cmd->msgId) {
@@ -291,6 +306,10 @@ int replyWithPropertyError(struct m_command *cmd, char *name) {
 			name);
 }
 
+/**
+ * Helper function to publish a reply to a message which contains a human readable
+ * version of the SSP response.
+ */
 int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
 	if(response == SSP_RESPONSE_OK) {
 		return replyWith(cmd->responseTopic, "{\"msgId\":\"%s\",\"correlId\":\"%s\",\"result\":\"ok\"}",
@@ -862,7 +881,7 @@ void handleChannelSecurityData(struct m_command *cmd) {
  * Handles the "test" command
  */
 void handleTest(struct m_command *cmd) {
-	replyWithSspResponse(&cmd, SSP_RESPONSE_OK);
+	replyWithSspResponse(cmd, SSP_RESPONSE_OK);
 }
 
 /**
@@ -1649,7 +1668,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 }
 
 /**
- * Initializes the ITL hardware
+ * Initializes an ITL hardware device via SSP
  */
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
@@ -1685,7 +1704,6 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		return;
 	}
 
-	//printf("firmware: %s\n", setup_req->FirmwareVersion);
 	printf("channels:\n");
 	for (i = 0; i < sspSetupReq->NumberOfChannels; i++) {
 		printf("channel %d: %d %s\n", i + 1, sspSetupReq->ChannelData[i].value,
