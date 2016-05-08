@@ -41,59 +41,81 @@
 #include "StringBuffer.h"
 #include "StringBuffer.c"
 
-redisAsyncContext *redisPublishCtx = NULL;		// redis context used for publishing messages
-redisAsyncContext *redisSubscribeCtx = NULL;	// redis context used for subscribing to topics
+/** \brief redis context used for publishing messages */
+redisAsyncContext *redisPublishCtx = NULL;
+
+/** \brief redis context used for subscribing to topics */
+redisAsyncContext *redisSubscribeCtx = NULL;
 
 struct m_metacash;
 
 /**
- * Structure which describes an actual ITL device.
+ * \brief Structure which describes an actual physical ITL device
  */
 struct m_device {
+	/** \brief Hardware Id (type of the device) */
 	int id;
+	/** \brief Human readable name of the device */
 	char *name;
+	/** \brief Preshared secret key */
 	unsigned long long key;
+	/** \brief State of the channel inhibits */
 	unsigned char channelInhibits;
-
+	/** \brief SSP_COMMAND structure to use for communicating with this device */
 	SSP_COMMAND sspC;
+	/** \brief SSP6_REQUEST_DATA structure to use initializing this device */
 	SSP6_SETUP_REQUEST_DATA sspSetupReq;
+	/** \brief Callback function which is used to inspect and publish events reported by this device */
 	void (*eventHandlerFn) (struct m_device *device, struct m_metacash *metacash, SSP_POLL_DATA6 *poll);
 };
 
 /**
- * Structure which contains the generic setup and
+ * \brief Structure which contains the generic setup data and
  * the device structures for our two ITL devices.
  */
 struct m_metacash {
+	/** \brief If !=0 then we should quit, checked via libevent callback */
 	int quit;
+	/** \brief If !=0 then we have actual hardware available */
 	int deviceAvailable;
+	/** \brief The name of the device we should use to connect to the ITL hardware */
 	char *serialDevice;
 
+	/** \brief The port of the redis server to which we connect */
 	int redisPort;
+	/** \brief The hostname of the redis server to which we connect */
 	char *redisHost;
 
-	struct event_base *eventBase; // libevent
-	struct event evPoll; // event for periodically polling the cash hardware
-	struct event evCheckQuit; // event for periodically checking to quit
+	/** \brief base struct for libevent */
+	struct event_base *eventBase;
+	/** \brief event struct for the periodic polling of the devices */
+	struct event evPoll;
+	/** \brief event struct for the periodic check for quitting */
+	struct event evCheckQuit;
 
-	struct m_device hopper; // smart hopper device
-	struct m_device validator; // nv200 + smart payout devices
+	/** \brief struct for the smart-hopper device */
+	struct m_device hopper;
+	/** \brief struct for the smart-payout device */
+	struct m_device validator;
 };
 
 /**
- * Structure which describes an actual command which we
+ * \brief Structure which describes an actual command which we
  * received in one of our request topics.
  */
 struct m_command {
+	/** \brief The complete received message parsed as JSON */
 	json_t *jsonMessage;
-
+	/** \brief The command from the message */
 	char *command;
+	/** \brief The correlId to use in the response (this is the msgId from the message which contained the command) */
 	char *correlId;
+	/** \brief The msgId for the response */
 	char *msgId;
+	/** \brief The topic to which the response should be published */
 	char *responseTopic;
-
+	/** \brief The device to which the command should be issued */
 	struct m_device *device;
-	struct m_metacash *metacash;
 };
 
 // mcSsp* : ssp helper functions
@@ -105,25 +127,25 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 
 // mc_ssp_* : ssp magic values and functions (each of these relate directly to a command specified in the ssp protocol)
 
-/** Magic Constant for the "GET FIRMWARE VERSION" command ID as specified in SSP */
+/** \brief Magic Constant for the "GET FIRMWARE VERSION" command ID as specified in SSP */
 #define SSP_CMD_GET_FIRMWARE_VERSION 0x20
-/** Magic Constant for the "GET DATASET VERSION" command ID as specified in SSP */
+/** \brief Magic Constant for the "GET DATASET VERSION" command ID as specified in SSP */
 #define SSP_CMD_GET_DATASET_VERSION 0x21
-/** Magic Constant for the "GET ALL LEVELS" command ID as specified in SSP */
+/** \brief Magic Constant for the "GET ALL LEVELS" command ID as specified in SSP */
 #define SSP_CMD_GET_ALL_LEVELS 0x22
-/** Magic Constant for the "SET DENOMINATION LEVEL" command ID as specified in SSP */
+/** \brief Magic Constant for the "SET DENOMINATION LEVEL" command ID as specified in SSP */
 #define SSP_CMD_SET_DENOMINATION_LEVEL 0x34
-/** Magic Constant for the "LAST REJECT NOTE" command ID as specified in SSP */
+/** \brief Magic Constant for the "LAST REJECT NOTE" command ID as specified in SSP */
 #define SSP_CMD_LAST_REJECT_NOTE 0x17
-/** Magic Constant for the "CONFIGURE BEZEL" command ID as specified in SSP */
+/** \brief Magic Constant for the "CONFIGURE BEZEL" command ID as specified in SSP */
 #define SSP_CMD_CONFIGURE_BEZEL 0x54
-/** Magic Constant for the "SMART EMPTY" command ID as specified in SSP */
+/** \brief Magic Constant for the "SMART EMPTY" command ID as specified in SSP */
 #define SSP_CMD_SMART_EMPTY 0x52
-/** Magic Constant for the "SET REFILL MODE " command ID as specified in SSP */
+/** \brief Magic Constant for the "SET REFILL MODE " command ID as specified in SSP */
 #define SSP_CMD_SET_REFILL_MODE 0x30
-/** Magic Constant for the "DISPLAY OFF" command ID as specified in SSP */
+/** \brief Magic Constant for the "DISPLAY OFF" command ID as specified in SSP */
 #define SSP_CMD_DISPLAY_OFF 0x4
-/** Magic Constant for the "DISPLAY ON" command ID as specified in SSP */
+/** \brief Magic Constant for the "DISPLAY ON" command ID as specified in SSP */
 #define SSP_CMD_DISPLAY_ON 0x3
 
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
@@ -156,19 +178,19 @@ void validatorEventHandler(struct m_device *device, struct m_metacash *metacash,
 static const char *CURRENCY = "EUR";
 
 /**
- * set by the signalHandler function and checked in cbCheckQuit.
+ * \brief Set by the signalHandler function and checked in cbCheckQuit.
  */
 int receivedSignal = 0;
 
 /**
- * Signal handler
+ * \brief Signal handler
  */
 void signalHandler(int signal) {
 	receivedSignal = signal;
 }
 
 /**
- * Waits for 300ms each time called.
+ * \brief Waits for 300ms each time called.
  */
 void hardwareWaitTime() {
 	struct timespec ts;
@@ -178,7 +200,7 @@ void hardwareWaitTime() {
 }
 
 /**
- * Create a new redisAsyncContext.
+ * \brief Connect to redis and return a new redisAsyncContext.
  */
 redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 	redisAsyncContext *conn = redisAsyncConnect(metacash->redisHost,
@@ -200,7 +222,7 @@ redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 }
 
 /**
- * Callback function for libEvent triggered "Poll" event.
+ * \brief Callback function for libEvent timer triggered "Poll" event.
  */
 void cbOnPollEvent(int fd, short event, void *privdata) {
 	struct m_metacash *metacash = privdata;
@@ -214,7 +236,7 @@ void cbOnPollEvent(int fd, short event, void *privdata) {
 }
 
 /**
- * Callback function for libEvent triggered "CheckQuit" event.
+ * \brief Callback function for libEvent timer triggered "CheckQuit" event.
  */
 void cbOnCheckQuitEvent(int fd, short event, void *privdata) {
 	if (receivedSignal != 0) {
@@ -227,21 +249,21 @@ void cbOnCheckQuitEvent(int fd, short event, void *privdata) {
 }
 
 /**
- * Callback function triggered by an incoming message in the "metacash" topic.
+ * \brief Callback function triggered by an incoming message in the "metacash" topic.
  */
 void cbOnMetacashMessage(redisAsyncContext *c, void *r, void *privdata) {
 	// empty for now
 }
 
 /**
- * Test if the message contains the "cmd":"(command)" property
+ * \brief Test if cmd.command equals command
  */
 int isCommand(struct m_command *cmd, const char *command) {
 	return ! strcmp(cmd->command, command);
 }
 
 /**
- * Helper function to publish a message to the "hopper-event" topic.
+ * \brief Helper function to publish a message to the "hopper-event" topic.
  */
 int publishHopperEvent(char *format, ...) {
 	va_list varags;
@@ -260,7 +282,7 @@ int publishHopperEvent(char *format, ...) {
 }
 
 /**
- * Helper function to publish a message to the "validator-event" topic.
+ * \brief Helper function to publish a message to the "validator-event" topic.
  */
 int publishValidatorEvent(char *format, ...) {
 	va_list varags;
@@ -279,7 +301,7 @@ int publishValidatorEvent(char *format, ...) {
 }
 
 /**
- * Helper function to publish a message to the given topic.
+ * \brief Helper function to publish a message to the given topic.
  */
 int replyWith(char *topic, char *format, ...) {
 	va_list varags;
@@ -298,7 +320,7 @@ int replyWith(char *topic, char *format, ...) {
 }
 
 /**
- * Helper function to publish a reply to a message which was missing a
+ * \brief Helper function to publish a reply to a message which was missing a
  * mandatory property (or the property was of the wrong type).
  */
 int replyWithPropertyError(struct m_command *cmd, char *name) {
@@ -320,7 +342,7 @@ int replyWithPropertyError(struct m_command *cmd, char *name) {
 }
 
 /**
- * Helper function to publish a reply to a message which contains a human readable
+ * \brief Helper function to publish a reply to a message which contains a human readable
  * version of the SSP response.
  */
 int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
@@ -374,7 +396,7 @@ int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
 }
 
 /**
- * Handles the "quit" command.
+ * \brief Handles the JSON "quit" command.
  */
 void handleQuit(struct m_command *cmd) {
 	receivedSignal = 1;
@@ -382,21 +404,21 @@ void handleQuit(struct m_command *cmd) {
 }
 
 /**
- * Handles the "empty" command.
+ * \brief Handles the JSON "empty" command.
  */
 void handleEmpty(struct m_command *cmd) {
 	replyWithSspResponse(cmd, mc_ssp_empty(&cmd->device->sspC));
 }
 
 /**
- * Handles the "smart-empty" command.
+ * \brief Handles the JSON "smart-empty" command.
  */
 void handleSmartEmpty(struct m_command *cmd) {
 	replyWithSspResponse(cmd, mc_ssp_smart_empty(&cmd->device->sspC));
 }
 
 /**
- * Handles the "do-payout" and "test-payout" commands.
+ * \brief Handles the JSON "do-payout" and "test-payout" commands.
  */
 void handlePayout(struct m_command *cmd) {
 	int payoutOption = 0;
@@ -445,7 +467,7 @@ void handlePayout(struct m_command *cmd) {
 }
 
 /**
- * Handles the "do-float" and "test-float" commands.
+ * \brief Handles the JSON "do-float" and "test-float" commands.
  */
 void handleFloat(struct m_command *cmd) {
 	// basically a copy of do/test-payout ...
@@ -495,7 +517,7 @@ void handleFloat(struct m_command *cmd) {
 }
 
 /**
- * Print debug output dbgDisplayInhibits.
+ * \brief Print inhibits debug output.
  */
 void dbgDisplayInhibits(unsigned char inhibits) {
 	printf("dbgDisplayInhibits: inhibits are: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
@@ -510,7 +532,7 @@ void dbgDisplayInhibits(unsigned char inhibits) {
 }
 
 /**
- * Handles the "enable-channels" command.
+ * \brief Handles the JSON "enable-channels" command.
  */
 void handleEnableChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
@@ -568,7 +590,7 @@ void handleEnableChannels(struct m_command *cmd) {
 }
 
 /**
- * Handles the "disable-channels" command.
+ * \brief Handles the JSON "disable-channels" command.
  */
 void handleDisableChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
@@ -626,7 +648,7 @@ void handleDisableChannels(struct m_command *cmd) {
 }
 
 /**
- * Handles the "inhibit-channels" command.
+ * \brief Handles the JSON "inhibit-channels" command.
  */
 void handleInhibitChannels(struct m_command *cmd) {
 	json_t *jChannels = json_object_get(cmd->jsonMessage, "channels");
@@ -670,21 +692,21 @@ void handleInhibitChannels(struct m_command *cmd) {
 }
 
 /**
- * Handles the "enable" command.
+ * \brief Handles the JSON "enable" command.
  */
 void handleEnable(struct m_command *cmd) {
 	replyWithSspResponse(cmd, ssp6_enable(&cmd->device->sspC));
 }
 
 /**
- * Handles the "disable" command.
+ * \brief Handles the JSON "disable" command.
  */
 void handleDisable(struct m_command *cmd) {
 	replyWithSspResponse(cmd, ssp6_disable(&cmd->device->sspC));
 }
 
 /**
- * Handles the "set-denomination-levels" command.
+ * \brief Handles the JSON "set-denomination-levels" command.
  */
 void handleSetDenominationLevels(struct m_command *cmd) {
 	json_t *jLevel = json_object_get(cmd->jsonMessage, "level");
@@ -723,7 +745,7 @@ void handleSetDenominationLevels(struct m_command *cmd) {
 }
 
 /**
- * Handles the "get-all-levels" command.
+ * \brief Handles the JSON "get-all-levels" command.
  */
 void handleGetAllLevels(struct m_command *cmd) {
 	char *json = NULL;
@@ -740,7 +762,7 @@ void handleGetAllLevels(struct m_command *cmd) {
 }
 
 /**
- * Handles the "get-firmware-version" command.
+ * \brief Handles the JSON "get-firmware-version" command.
  */
 void handleGetFirmwareVersion(struct m_command *cmd) {
 	char firmwareVersion[100] = { 0 };
@@ -755,7 +777,7 @@ void handleGetFirmwareVersion(struct m_command *cmd) {
 }
 
 /**
- * Handles the "get-dataset-version" command.
+ * \brief Handles the JSON "get-dataset-version" command.
  */
 void handleGetDatasetVersion(struct m_command *cmd) {
 	char datasetVersion[100] = { 0 };
@@ -771,7 +793,7 @@ void handleGetDatasetVersion(struct m_command *cmd) {
 }
 
 /**
- * Handles the "last-reject-note" command.
+ * \brief Handles the JSON "last-reject-note" command.
  */
 void handleLastRejectNote(struct m_command *cmd) {
 	unsigned char reasonCode;
@@ -883,21 +905,21 @@ void handleLastRejectNote(struct m_command *cmd) {
 }
 
 /**
- * Handles the "channel-security" command.
+ * \brief Handles the JSON "channel-security" command.
  */
 void handleChannelSecurityData(struct m_command *cmd) {
 	mc_ssp_channel_security_data(&cmd->device->sspC);
 }
 
 /**
- * Handles the "test" command
+ * \brief Handles the JSON "test" command
  */
 void handleTest(struct m_command *cmd) {
 	replyWithSspResponse(cmd, SSP_RESPONSE_OK);
 }
 
 /**
- * Callback function triggered by an incoming message in either
+ * \brief Callback function triggered by an incoming message in either
  * the "hopper-request" or "validator-request" topic.
  */
 void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
@@ -1039,7 +1061,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 }
 
 /**
- * Callback function triggered by the redis client on connecting with
+ * \brief Callback function triggered by the redis client on connecting with
  * the "publish" context.
  */
 void cbOnConnectPublishContext(const redisAsyncContext *c, int status) {
@@ -1051,7 +1073,7 @@ void cbOnConnectPublishContext(const redisAsyncContext *c, int status) {
 }
 
 /**
- * Callback function triggered by the redis client on disconnecting with
+ * \brief Callback function triggered by the redis client on disconnecting with
  * the "publish" context.
  */
 void cbOnDisconnectPublishContext(const redisAsyncContext *c, int status) {
@@ -1063,7 +1085,7 @@ void cbOnDisconnectPublishContext(const redisAsyncContext *c, int status) {
 }
 
 /**
- * Callback function triggered by the redis client on connecting with
+ * \brief Callback function triggered by the redis client on connecting with
  * the "subscribe" context.
  */
 void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
@@ -1084,7 +1106,7 @@ void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
 }
 
 /**
- * Callback function triggered by the redis client on disconnecting with
+ * \brief Callback function triggered by the redis client on disconnecting with
  * the "subscribe" context.
  */
 void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
@@ -1170,7 +1192,7 @@ int main(int argc, char *argv[]) {
 }
 
 /**
- * Parse the command line arguments.
+ * \brief Parse the command line arguments.
  */
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
@@ -1205,7 +1227,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 }
 
 /**
- *  Callback function used for publishing events reported by the Hopper hardware.
+ *  \brief Callback function used for inspecting and publishing events reported by the Hopper hardware.
  */
 void hopperEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
@@ -1326,7 +1348,7 @@ void hopperEventHandler(struct m_device *device,
 }
 
 /**
- *  Callback function used for publishing events reported by the Validator hardware.
+ *  \brief Callback function used for inspecting and publishing events reported by the Validator hardware.
  */
 void validatorEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
@@ -1479,7 +1501,7 @@ void validatorEventHandler(struct m_device *device,
 }
 
 /**
- * Initializes and configures redis, libevent and the hardware.
+ * \brief Initializes and configures redis, libevent and the hardware.
  */
 void setup(struct m_metacash *metacash) {
 	// initialize libEvent
@@ -1600,7 +1622,7 @@ void setup(struct m_metacash *metacash) {
 }
 
 /**
- * Opens the given serial device.
+ * \brief Opens the serial device.
  */
 int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	// open the serial device
@@ -1636,14 +1658,14 @@ int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 }
 
 /**
- * Closes the given serial device.
+ * \brief Closes the serial device.
  */
 void mcSspCloseSerialDevice(struct m_metacash *metacash) {
 	close_ssp_port();
 }
 
 /**
- * Issues a poll command to the hardware and dispatches the response to the event handler function of the device.
+ * \brief Issues a poll command to the hardware and dispatches the response to the event handler function of the device.
  */
 void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 	SSP_POLL_DATA6 poll;
@@ -1682,7 +1704,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 }
 
 /**
- * Initializes an ITL hardware device via SSP
+ * \brief Initializes an ITL hardware device via SSP
  */
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
@@ -1741,7 +1763,7 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 }
 
 /**
- * Initializes the SSP_COMMAND structure.
+ * \brief Initializes the SSP_COMMAND structure.
  */
 void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId) {
 	sspC->SSPAddress = deviceId;
@@ -1752,7 +1774,7 @@ void mcSspSetupCommand(SSP_COMMAND *sspC, int deviceId) {
 }
 
 /**
- * Implements the "LAST REJECT NOTE" command from the SSP Protocol.
+ * \brief Implements the "LAST REJECT NOTE" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 		unsigned char *reason) {
@@ -1773,7 +1795,7 @@ SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC,
 }
 
 /**
- * Implements the "DISPLAY ON" command from the SSP Protocol.
+ * \brief Implements the "DISPLAY ON" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
@@ -1793,7 +1815,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC) {
 }
 
 /**
- * Implements the "DISPLAY OFF" command from the SSP Protocol.
+ * \brief Implements the "DISPLAY OFF" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
@@ -1813,7 +1835,7 @@ SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC) {
 }
 
 /**
- * Implements the "SET REFILL MODE" command from the SSP Protocol.
+ * \brief Implements the "SET REFILL MODE" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 9;
@@ -1844,7 +1866,7 @@ SSP_RESPONSE_ENUM mc_ssp_set_refill_mode(SSP_COMMAND *sspC) {
 }
 
 /**
- * Implements the "EMPTY" command from the SSP Protocol.
+ * \brief Implements the "EMPTY" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
@@ -1864,7 +1886,7 @@ SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC) {
 }
 
 /**
- * Implements the "SMART EMPTY" command from the SSP Protocol.
+ * \brief Implements the "SMART EMPTY" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
@@ -1884,7 +1906,7 @@ SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 }
 
 /**
- * Implements the "CONFIGURE BEZEL" command from the SSP Protocol.
+ * \brief Implements the "CONFIGURE BEZEL" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 		unsigned char g, unsigned char b, unsigned char non_volatile) {
@@ -1909,7 +1931,7 @@ SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
 }
 
 /**
- * Implements the "SET DENOMINATION LEVEL" command from the SSP Protocol.
+ * \brief Implements the "SET DENOMINATION LEVEL" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, int level, const char *cc) {
 	sspC->CommandDataLength = 10;
@@ -1944,7 +1966,7 @@ SSP_RESPONSE_ENUM mc_ssp_set_denomination_level(SSP_COMMAND *sspC, int amount, i
 }
 
 /**
- * Implements the "GET ALL LEVELS" command from the SSP Protocol.
+ * \brief Implements the "GET ALL LEVELS" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 	sspC->CommandDataLength = 1;
@@ -2022,7 +2044,7 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 }
 
 /**
- * Implements the "FLOAT" command from the SSP Protocol.
+ * \brief Implements the "FLOAT" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 		const char *cc, const char option) {
@@ -2063,7 +2085,7 @@ SSP_RESPONSE_ENUM mc_ssp_float(SSP_COMMAND *sspC, const int value,
 }
 
 /**
- * Implements the "GET FIRMWARE VERSION" command from the SSP Protocol.
+ * \brief Implements the "GET FIRMWARE VERSION" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion) {
 	sspC->CommandDataLength = 1;
@@ -2087,7 +2109,7 @@ SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareV
 }
 
 /**
- * Implements the "GET DATASET VERSION" command from the SSP Protocol.
+ * \brief Implements the "GET DATASET VERSION" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion) {
 	sspC->CommandDataLength = 1;
@@ -2111,7 +2133,7 @@ SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVer
 }
 
 /**
- * Implements the "CHANNEL SECURITY DATA" command from the SSP Protocol.
+ * \brief Implements the "CHANNEL SECURITY DATA" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC) {
 	sspC->CommandDataLength = 1;
