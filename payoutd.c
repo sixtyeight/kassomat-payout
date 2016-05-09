@@ -12,7 +12,9 @@
  *  - the cbOnRequestMessage() checks if the command is known and if its known dispatches the call to a handle<Cmd> function
  *  - a command handler interprets the provided JSON message, issues commands to the money hardware and publishes a JSON response
  *  - the naming convention used most of the time is like: the JSON command is 'configure-bezel' so the handler function is called handleConfigureBezel()
+ *  - handleConfigureBezel() itself calls mc_ssp_configure_bezel() which sends the SSP command to the hardware
  *  - each device has its own poll event handling function (responsible for publishing the events to the devices event topic)
+ *  - those poll handler functions are hopperEventHandler() and validatorEventHandler()
  *  - on startup/exiting of the daemon started/exiting messages are published to the 'payout-event' topic
  */
 
