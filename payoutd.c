@@ -931,6 +931,42 @@ void handleTest(struct m_command *cmd) {
 }
 
 /**
+ * \brief Handles the JSON "configure-bezel" command.
+ */
+void handleConfigureBezel(struct m_command *cmd) {
+	json_t *jR = json_object_get(cmd->jsonMessage, "r");
+	if(! json_is_integer(jR)) {
+		replyWithPropertyError(cmd, "r");
+		return;
+	}
+	unsigned char r = json_integer_value(jR);
+
+	json_t *jG = json_object_get(cmd->jsonMessage, "g");
+	if(! json_is_integer(jG)) {
+		replyWithPropertyError(cmd, "g");
+		return;
+	}
+	unsigned char g = json_integer_value(jG);
+
+	json_t *jB = json_object_get(cmd->jsonMessage, "b");
+	if(! json_is_integer(jB)) {
+		replyWithPropertyError(cmd, "b");
+		return;
+	}
+	unsigned char b = json_integer_value(jB);
+
+	json_t *jType = json_object_get(cmd->jsonMessage, "type");
+	if(! json_is_integer(jType)) {
+		replyWithPropertyError(cmd, "type");
+		return;
+	}
+	unsigned char type = json_integer_value(jType);
+
+	replyWithSspResponse(cmd,
+			mc_ssp_configure_bezel(&cmd->device->sspC, r, g, b, SSP_OPTION_NON_VOLATILE, type));
+}
+
+/**
  * \brief Callback function triggered by an incoming message in either
  * the "hopper-request" or "validator-request" topic.
  */
@@ -1029,7 +1065,9 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					printf("rejecting cmd='%s' from msgId='%s', hardware unavailable!\n", cmd.command, cmd.correlId);
 					replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.correlId);
 				} else {
-					if(isCommand(&cmd, "empty")) {
+					if(isCommand(&cmd, "configure-bezel")) {
+						handleConfigureBezel(&cmd);
+					} else if(isCommand(&cmd, "empty")) {
 						handleEmpty(&cmd);
 					} else if (isCommand(&cmd, "smart-empty")) {
 						handleSmartEmpty(&cmd);
