@@ -186,11 +186,11 @@ const char SSP_OPTION_ROUTE_STORAGE = 0x00;
 
 /** \brief Magic Constant for the "volatile" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_VOLATILE = 0x00;
-/** \brief Magic Constant for the "route to storage" option in configure bezel as specified in SSP */
+/** \brief Magic Constant for the "non volatile" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_NON_VOLATILE = 0x01;
-/** \brief Magic Constant for the "flashing" option in configure bezel as specified in SSP */
-const unsigned char SSP_OPTION_SOLID = 0x00;
 /** \brief Magic Constant for the "solid" option in configure bezel as specified in SSP */
+const unsigned char SSP_OPTION_SOLID = 0x00;
+/** \brief Magic Constant for the "flashing" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_FLASHING = 0x01;
 /** \brief Magic Constant for the "disabled" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_DISABLED = 0x02;
