@@ -1,5 +1,19 @@
-/** @file payoutd.c
- *  @brief Main source file for the payoutd daemon.
+/** \file payoutd.c
+ *  \brief Main source file for the payoutd daemon.
+ *
+ *  In a nutshell:
+ *  - we are single threaded
+ *  - libevent is used to trigger periodic events which poll the hardware and check if we should quit
+ *  - main() function supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?
+ *  - libevent calls cbOnPollEvent() for the "poll" event
+ *  - libevent calls cbOnCheckQuitEvent() for the "check quit" event
+ *  - redis is used in conjunction with libevent
+ *  - if a message is detected in 'validator-request' or 'hopper-request' the cbOnRequestMessage() is called
+ *  - the cbOnRequestMessage() checks if the command is known and if its known dispatches the call to a handle<Cmd> function
+ *  - a command handler interprets the provided JSON message, issues commands to the money hardware and publishes a JSON response
+ *  - the naming convention used most of the time is like: the JSON command is 'configure-bezel' so the handler function is called handleConfigureBezel()
+ *  - each device has its own poll event handling function (responsible for publishing the events to the devices event topic)
+ *  - on startup/exiting of the daemon started/exiting messages are published to the 'payout-event' topic
  */
 
 #include <ctype.h>
