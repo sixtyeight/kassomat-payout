@@ -1203,7 +1203,7 @@ void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 }
 
 /**
- * Entry point of the daemon.
+ * \brief Supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?.
  */
 int main(int argc, char *argv[]) {
 	// setup logging via syslog
