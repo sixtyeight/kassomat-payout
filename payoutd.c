@@ -150,7 +150,8 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC);
-SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r, unsigned char g, unsigned char b, unsigned char non_volatile);
+SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r, unsigned char g,
+		unsigned char b, unsigned char volatileOption, unsigned char bezelTypeOption);
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_display_off(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_last_reject_note(SSP_COMMAND *sspC, unsigned char *reason);
@@ -163,9 +164,20 @@ SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareV
 SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
 
 /** Magic Constant for the "route to cashbox" option as specified in SSP */
-static const char ROUTE_CASHBOX = 0x01;
+const char SSP_OPTION_ROUTE_CASHBOX = 0x01;
 /** Magic Constant for the "route to storage" option as specified in SSP */
-static const char ROUTE_STORAGE = 0x00;
+const char SSP_OPTION_ROUTE_STORAGE = 0x00;
+
+/** Magic Constant for the "volatile" option in configure bezel as specified in SSP */
+const unsigned char SSP_OPTION_VOLATILE = 0x00;
+/** Magic Constant for the "route to storage" option in configure bezel as specified in SSP */
+const unsigned char SSP_OPTION_NON_VOLATILE = 0x01;
+/** Magic Constant for the "flashing" option in configure bezel as specified in SSP */
+const unsigned char SSP_OPTION_SOLID = 0x00;
+/** Magic Constant for the "solid" option in configure bezel as specified in SSP */
+const unsigned char SSP_OPTION_FLASHING = 0x01;
+/** Magic Constant for the "disabled" option in configure bezel as specified in SSP */
+const unsigned char SSP_OPTION_DISABLED = 0x02;
 
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
 
@@ -1574,19 +1586,19 @@ void setup(struct m_metacash *metacash) {
 
 			// setup the routing of the banknotes in the validator (amounts are in cent)
 			ssp6_set_route(&metacash->validator.sspC, 500, CURRENCY,
-					ROUTE_CASHBOX); // 5 euro
+					SSP_OPTION_ROUTE_CASHBOX); // 5 euro
 			ssp6_set_route(&metacash->validator.sspC, 1000, CURRENCY,
-					ROUTE_CASHBOX); // 10 euro
+					SSP_OPTION_ROUTE_CASHBOX); // 10 euro
 			ssp6_set_route(&metacash->validator.sspC, 2000, CURRENCY,
-					ROUTE_CASHBOX); // 20 euro
+					SSP_OPTION_ROUTE_CASHBOX); // 20 euro
 			ssp6_set_route(&metacash->validator.sspC, 5000, CURRENCY,
-					ROUTE_STORAGE); // 50 euro
+					SSP_OPTION_ROUTE_STORAGE); // 50 euro
 			ssp6_set_route(&metacash->validator.sspC, 10000, CURRENCY,
-					ROUTE_STORAGE); // 100 euro
+					SSP_OPTION_ROUTE_STORAGE); // 100 euro
 			ssp6_set_route(&metacash->validator.sspC, 20000, CURRENCY,
-					ROUTE_STORAGE); // 200 euro
+					SSP_OPTION_ROUTE_STORAGE); // 200 euro
 			ssp6_set_route(&metacash->validator.sspC, 50000, CURRENCY,
-					ROUTE_STORAGE); // 500 euro
+					SSP_OPTION_ROUTE_STORAGE); // 500 euro
 
 			metacash->validator.channelInhibits = 0x0; // disable all channels
 
@@ -1909,13 +1921,14 @@ SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
  * \brief Implements the "CONFIGURE BEZEL" command from the SSP Protocol.
  */
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r,
-		unsigned char g, unsigned char b, unsigned char non_volatile) {
-	sspC->CommandDataLength = 5;
+		unsigned char g, unsigned char b, unsigned char volatileOption, unsigned char bezelTypeOption) {
+	sspC->CommandDataLength = 6;
 	sspC->CommandData[0] = SSP_CMD_CONFIGURE_BEZEL;
 	sspC->CommandData[1] = r;
 	sspC->CommandData[2] = g;
 	sspC->CommandData[3] = b;
-	sspC->CommandData[4] = non_volatile;
+	sspC->CommandData[4] = volatileOption;
+	sspC->CommandData[5] = bezelTypeOption;
 
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0) {
