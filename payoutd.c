@@ -3,7 +3,7 @@
  *
  *  In a nutshell:
  *  - we are single threaded
- *  - libevent is used to trigger periodic events which poll the hardware and check if we should quit
+ *  - libevent is used to trigger 2 periodic events ("poll event" and "check quit") which poll the hardware and check if we should quit
  *  - main() function supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?
  *  - libevent calls cbOnPollEvent() for the "poll" event
  *  - libevent calls cbOnCheckQuitEvent() for the "check quit" event
