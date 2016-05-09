@@ -1218,7 +1218,13 @@ int main(int argc, char *argv[]) {
 
 	syslog(LOG_NOTICE, "metacash open for business :D");
 
+	redisAsyncCommand(redisPublishCtx, NULL, NULL,
+			"PUBLISH payout-event %s", "{ \"event\":\"started\" }");
+
 	event_base_dispatch(metacash.eventBase); // blocking until exited via api-call
+
+	redisAsyncCommand(redisPublishCtx, NULL, NULL,
+			"PUBLISH payout-event %s", "{ \"event\":\"exiting\" }");
 
 	syslog(LOG_NOTICE, "exiting");
 
