@@ -163,20 +163,20 @@ SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_get_firmware_version(SSP_COMMAND *sspC, char *firmwareVersion);
 SSP_RESPONSE_ENUM mc_ssp_get_dataset_version(SSP_COMMAND *sspC, char *datasetVersion);
 
-/** Magic Constant for the "route to cashbox" option as specified in SSP */
+/** \brief Magic Constant for the "route to cashbox" option as specified in SSP */
 const char SSP_OPTION_ROUTE_CASHBOX = 0x01;
-/** Magic Constant for the "route to storage" option as specified in SSP */
+/** \brief Magic Constant for the "route to storage" option as specified in SSP */
 const char SSP_OPTION_ROUTE_STORAGE = 0x00;
 
-/** Magic Constant for the "volatile" option in configure bezel as specified in SSP */
+/** \brief Magic Constant for the "volatile" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_VOLATILE = 0x00;
-/** Magic Constant for the "route to storage" option in configure bezel as specified in SSP */
+/** \brief Magic Constant for the "route to storage" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_NON_VOLATILE = 0x01;
-/** Magic Constant for the "flashing" option in configure bezel as specified in SSP */
+/** \brief Magic Constant for the "flashing" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_SOLID = 0x00;
-/** Magic Constant for the "solid" option in configure bezel as specified in SSP */
+/** \brief Magic Constant for the "solid" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_FLASHING = 0x01;
-/** Magic Constant for the "disabled" option in configure bezel as specified in SSP */
+/** \brief Magic Constant for the "disabled" option in configure bezel as specified in SSP */
 const unsigned char SSP_OPTION_DISABLED = 0x02;
 
 static const unsigned long long DEFAULT_KEY = 0x123456701234567LL;
