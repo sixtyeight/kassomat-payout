@@ -1,0 +1,14 @@
+digraph "m_device"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="m_device",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" sspSetupReq" ,fontname="Helvetica"];
+  Node2 [label="SSP6_SETUP_REQUEST_DATA",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structSSP6__SETUP__REQUEST__DATA.html"];
+  Node3 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" ChannelData" ,fontname="Helvetica"];
+  Node3 [label="SSP6_CHANNEL_DATA",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structSSP6__CHANNEL__DATA.html"];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" sspC" ,fontname="Helvetica"];
+  Node4 [label="SSP_COMMAND",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structSSP__COMMAND.html"];
+  Node5 -> Node4 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" Key" ,fontname="Helvetica"];
+  Node5 [label="SSP_FULL_KEY",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structSSP__FULL__KEY.html"];
+}
