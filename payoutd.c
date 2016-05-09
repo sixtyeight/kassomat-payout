@@ -275,6 +275,25 @@ int isCommand(struct m_command *cmd, const char *command) {
 }
 
 /**
+ * \brief Helper function to publish a message to the "payout-event" topic.
+ */
+int publishPayoutEvent(char *format, ...) {
+	va_list varags;
+	va_start(varags, format);
+
+	char *reply = NULL;
+	vasprintf(&reply, format, varags);
+
+	va_end(varags);
+
+	redisAsyncCommand(redisPublishCtx, NULL, NULL, "PUBLISH %s %s", "payout-event", reply);
+
+	free(reply);
+
+	return 0;
+}
+
+/**
  * \brief Helper function to publish a message to the "hopper-event" topic.
  */
 int publishHopperEvent(char *format, ...) {
@@ -1218,13 +1237,11 @@ int main(int argc, char *argv[]) {
 
 	syslog(LOG_NOTICE, "metacash open for business :D");
 
-	redisAsyncCommand(redisPublishCtx, NULL, NULL,
-			"PUBLISH payout-event %s", "{ \"event\":\"started\" }");
+	publishPayoutEvent("{ \"event\":\"started\" }");
 
 	event_base_dispatch(metacash.eventBase); // blocking until exited via api-call
 
-	redisAsyncCommand(redisPublishCtx, NULL, NULL,
-			"PUBLISH payout-event %s", "{ \"event\":\"exiting\" }");
+	publishPayoutEvent("{ \"event\":\"exiting\" }");
 
 	syslog(LOG_NOTICE, "exiting");
 
