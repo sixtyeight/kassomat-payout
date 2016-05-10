@@ -34,10 +34,7 @@
 // lowlevel library provided by the cash hardware vendor
 // innovative technologies (http://innovative-technology.com).
 // ssp manual available at http://innovative-technology.com/images/pdocuments/manuals/SSP_Manual.pdf
-#include "port_linux.h"
-#include "ssp_defines.h"
 #include "ssp_commands.h"
-#include "SSPComs.h"
 
 // json library
 #include <jansson.h>
@@ -219,6 +216,8 @@ void signalHandler(int signal) {
 
 /**
  * \brief Waits for 300ms each time called.
+ * \details Details only to get graph.
+ * \callergraph
  */
 void hardwareWaitTime() {
 	struct timespec ts;
@@ -251,6 +250,8 @@ redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 
 /**
  * \brief Callback function for libEvent timer triggered "Poll" event.
+ * \details Details only to get graph.
+ * \callgraph
  */
 void cbOnPollEvent(int fd, short event, void *privdata) {
 	struct m_metacash *metacash = privdata;
@@ -349,6 +350,8 @@ int publishValidatorEvent(char *format, ...) {
 
 /**
  * \brief Helper function to publish a message to the given topic.
+ * \details Details only to get graph.
+ * \callergraph
  */
 int replyWith(char *topic, char *format, ...) {
 	va_list varags;
@@ -369,6 +372,8 @@ int replyWith(char *topic, char *format, ...) {
 /**
  * \brief Helper function to publish a reply to a message which was missing a
  * mandatory property (or the property was of the wrong type).
+ * \details Details only to get graph.
+ * \callergraph
  */
 int replyWithPropertyError(struct m_command *cmd, char *name) {
 	char *msgId = "unknown";
@@ -391,6 +396,8 @@ int replyWithPropertyError(struct m_command *cmd, char *name) {
 /**
  * \brief Helper function to publish a reply to a message which contains a human readable
  * version of the SSP response.
+ * \details Details only to get graph.
+ * \callergraph
  */
 int replyWithSspResponse(struct m_command *cmd, SSP_RESPONSE_ENUM response) {
 	if(response == SSP_RESPONSE_OK) {
@@ -1004,6 +1011,8 @@ void handleConfigureBezel(struct m_command *cmd) {
 /**
  * \brief Callback function triggered by an incoming message in either
  * the "hopper-request" or "validator-request" topic.
+ * \details Details only to get graph.
+ * \callgraph
  */
 void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 	if (r == NULL) {
@@ -1204,6 +1213,8 @@ void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 
 /**
  * \brief Supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?.
+ * \details Warning: both "calls" to hopperEventHandler() and validatorEventHandler() in the callgraph are false positives!
+ * \callgraph
  */
 int main(int argc, char *argv[]) {
 	// setup logging via syslog
@@ -1316,7 +1327,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 }
 
 /**
- *  \brief Callback function used for inspecting and publishing events reported by the Hopper hardware.
+ * \brief Callback function used for inspecting and publishing events reported by the Hopper hardware.
  */
 void hopperEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
@@ -1437,7 +1448,7 @@ void hopperEventHandler(struct m_device *device,
 }
 
 /**
- *  \brief Callback function used for inspecting and publishing events reported by the Validator hardware.
+ * \brief Callback function used for inspecting and publishing events reported by the Validator hardware.
  */
 void validatorEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
