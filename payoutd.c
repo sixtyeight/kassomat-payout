@@ -775,8 +775,8 @@ void handleSetDenominationLevels(struct m_command *cmd) {
 		return;
 	}
 
-	int amount = json_integer_value(jLevel);
-	int level = json_integer_value(jAmount);
+	int level = json_integer_value(jLevel);
+	int amount = json_integer_value(jAmount);
 
 	if(level > 0) {
 		/* Quote from the spec -.-
