@@ -1,0 +1,10 @@
+<map id="replyWithPropertyError" name="replyWithPropertyError">
+<area shape="rect" id="node2" href="$payoutd_8c.html#a1d9f149fb793ac5d26049106e073e000" title="Handles the JSON &quot;do&#45;payout&quot; and &quot;test&#45;payout&quot; commands. " alt="" coords="257,5,358,32"/>
+<area shape="rect" id="node3" href="$payoutd_8c.html#acbcf38d2b9f851ea543913ce587af4ff" title="Handles the JSON &quot;do&#45;float&quot; and &quot;test&#45;float&quot; commands. " alt="" coords="263,56,352,83"/>
+<area shape="rect" id="node4" href="$payoutd_8c.html#ab3bf7e351c86140be8ee8dca7a4847e7" title="Handles the JSON &quot;enable&#45;channels&quot; command. " alt="" coords="230,107,385,133"/>
+<area shape="rect" id="node5" href="$payoutd_8c.html#a7ecf117fed4073b390eee78eaafaf52c" title="Handles the JSON &quot;disable&#45;channels&quot; command. " alt="" coords="228,157,387,184"/>
+<area shape="rect" id="node6" href="$payoutd_8c.html#aa6f5a77d76c6476b6c3064a14200bb29" title="Handles the JSON &quot;inhibit&#45;channels&quot; command. " alt="" coords="232,208,383,235"/>
+<area shape="rect" id="node7" href="$payoutd_8c.html#a85640d4476b62388a06263c321abe19f" title="Handles the JSON &quot;set&#45;denomination&#45;levels&quot; command. " alt="" coords="208,259,407,285"/>
+<area shape="rect" id="node8" href="$payoutd_8c.html#ad29582045823cf068980ba01110c2367" title="Handles the JSON &quot;configure&#45;bezel&quot; command. " alt="" coords="233,309,382,336"/>
+<area shape="rect" id="node9" href="$payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7" title="Callback function triggered by an incoming message in either the &quot;hopper&#45;request&quot; or &quot;validator&#45;reque..." alt="" coords="230,360,385,387"/>
+</map>

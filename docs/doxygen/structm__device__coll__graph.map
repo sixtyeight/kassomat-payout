@@ -1,0 +1,6 @@
+<map id="m_device" name="m_device">
+<area shape="rect" id="node2" href="$structSSP6__SETUP__REQUEST__DATA.html" title="SSP6_SETUP_REQUEST_DATA" alt="" coords="5,95,228,121"/>
+<area shape="rect" id="node3" href="$structSSP6__CHANNEL__DATA.html" title="SSP6_CHANNEL_DATA" alt="" coords="31,5,202,32"/>
+<area shape="rect" id="node4" href="$structSSP__COMMAND.html" title="SSP_COMMAND" alt="" coords="252,95,379,121"/>
+<area shape="rect" id="node5" href="$structSSP__FULL__KEY.html" title="SSP_FULL_KEY" alt="" coords="254,5,377,32"/>
+</map>

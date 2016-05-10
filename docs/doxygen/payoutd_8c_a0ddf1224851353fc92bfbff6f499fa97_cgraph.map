@@ -1,0 +1,12 @@
+<map id="main" name="main">
+<area shape="rect" id="node2" href="$payoutd_8c.html#ad2e59c7203b3bddc1bc9a2224b52e8e7" title="Signal handler. " alt="" coords="139,5,240,32"/>
+<area shape="rect" id="node3" href="$payoutd_8c.html#a5b8bc0840980431554dcca7371b87d77" title="Callback function used for inspecting and publishing events reported by the Hopper hardware..." alt="" coords="119,56,259,83"/>
+<area shape="rect" id="node5" href="$payoutd_8c.html#ac32e697eabde481d9782c8a50b0cabad" title="Callback function used for inspecting and publishing events reported by the Validator hardware..." alt="" coords="114,107,265,133"/>
+<area shape="rect" id="node7" href="$payoutd_8c.html#ae443387b74fb23fa8caca5b9eb6acae9" title="Parse the command line arguments. " alt="" coords="136,157,243,184"/>
+<area shape="rect" id="node8" href="$payoutd_8c.html#a8d12150d56c77b5c3d1624a759b74be6" title="Opens the serial device. " alt="" coords="105,208,273,235"/>
+<area shape="rect" id="node9" href="$payoutd_8c.html#a43e3e142be0a60922a20d50820672d37" title="Initializes and configures redis, libevent and the hardware. " alt="" coords="162,259,217,285"/>
+<area shape="rect" id="node10" href="$payoutd_8c.html#a9d48226976c3c3801344c2165420803e" title="Helper function to publish a message to the &quot;payout&#45;event&quot; topic. " alt="" coords="120,309,259,336"/>
+<area shape="rect" id="node11" href="$payoutd_8c.html#ac4bb6e155aabd3b6a2c6db28399135e5" title="Closes the serial device. " alt="" coords="104,360,275,387"/>
+<area shape="rect" id="node4" href="$payoutd_8c.html#a91175f8d08325716034a50e0311322ee" title="Helper function to publish a message to the &quot;hopper&#45;event&quot; topic. " alt="" coords="327,56,466,83"/>
+<area shape="rect" id="node6" href="$payoutd_8c.html#a59e00b7363e9f71b5dc9922eb17c60db" title="Helper function to publish a message to the &quot;validator&#45;event&quot; topic. " alt="" coords="323,107,471,133"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="replyWithSspResponse" name="replyWithSspResponse">
+<area shape="rect" id="node2" href="$payoutd_8c.html#a6a017349d466b4d2f14d9dff2b032617" title="Handles the JSON &quot;quit&quot; command. " alt="" coords="269,5,353,32"/>
+<area shape="rect" id="node3" href="$payoutd_8c.html#a2b6baaac084991183bffa4f60df21654" title="Handles the JSON &quot;empty&quot; command. " alt="" coords="262,56,361,83"/>
+<area shape="rect" id="node4" href="$payoutd_8c.html#af481ccfd3457b5d443c5fc350f7eb049" title="Handles the JSON &quot;smart&#45;empty&quot; command. " alt="" coords="245,107,378,133"/>
+<area shape="rect" id="node5" href="$payoutd_8c.html#a1d9f149fb793ac5d26049106e073e000" title="Handles the JSON &quot;do&#45;payout&quot; and &quot;test&#45;payout&quot; commands. " alt="" coords="261,157,362,184"/>
+<area shape="rect" id="node6" href="$payoutd_8c.html#acbcf38d2b9f851ea543913ce587af4ff" title="Handles the JSON &quot;do&#45;float&quot; and &quot;test&#45;float&quot; commands. " alt="" coords="267,208,356,235"/>
+<area shape="rect" id="node7" href="$payoutd_8c.html#ab3bf7e351c86140be8ee8dca7a4847e7" title="Handles the JSON &quot;enable&#45;channels&quot; command. " alt="" coords="234,259,389,285"/>
+<area shape="rect" id="node8" href="$payoutd_8c.html#a7ecf117fed4073b390eee78eaafaf52c" title="Handles the JSON &quot;disable&#45;channels&quot; command. " alt="" coords="232,309,391,336"/>
+<area shape="rect" id="node9" href="$payoutd_8c.html#aa6f5a77d76c6476b6c3064a14200bb29" title="Handles the JSON &quot;inhibit&#45;channels&quot; command. " alt="" coords="236,360,387,387"/>
+<area shape="rect" id="node10" href="$payoutd_8c.html#a19cea4682066690ef517e96be07634bc" title="Handles the JSON &quot;enable&quot; command. " alt="" coords="261,411,361,437"/>
+<area shape="rect" id="node11" href="$payoutd_8c.html#aeb52e0dc7c8e0025e118f26874e634ac" title="Handles the JSON &quot;disable&quot; command. " alt="" coords="259,461,363,488"/>
+<area shape="rect" id="node12" href="$payoutd_8c.html#a85640d4476b62388a06263c321abe19f" title="Handles the JSON &quot;set&#45;denomination&#45;levels&quot; command. " alt="" coords="212,512,411,539"/>
+<area shape="rect" id="node13" href="$payoutd_8c.html#aac5597f06c73e9a9c6c86a736bcccb4b" title="Handles the JSON &quot;get&#45;all&#45;levels&quot; command. " alt="" coords="244,563,379,589"/>
+<area shape="rect" id="node14" href="$payoutd_8c.html#aece62bc895c99d8f2163f96f6a4ea0e8" title="Handles the JSON &quot;get&#45;firmware&#45;version&quot; command. " alt="" coords="222,613,401,640"/>
+<area shape="rect" id="node15" href="$payoutd_8c.html#abd3318ecbeaee0f834296b0d78d59019" title="Handles the JSON &quot;get&#45;dataset&#45;version&quot; command. " alt="" coords="226,664,397,691"/>
+<area shape="rect" id="node16" href="$payoutd_8c.html#a9741a956b74002680409a7fe3cdc1697" title="Handles the JSON &quot;last&#45;reject&#45;note&quot; command. " alt="" coords="236,715,387,741"/>
+<area shape="rect" id="node17" href="$payoutd_8c.html#a913c3422bbead851b571c40784c7365e" title="Handles the JSON &quot;test&quot; command. " alt="" coords="268,765,355,792"/>
+<area shape="rect" id="node18" href="$payoutd_8c.html#ad29582045823cf068980ba01110c2367" title="Handles the JSON &quot;configure&#45;bezel&quot; command. " alt="" coords="237,816,386,843"/>
+</map>

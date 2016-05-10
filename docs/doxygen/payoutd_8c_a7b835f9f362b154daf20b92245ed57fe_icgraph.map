@@ -1,0 +1,4 @@
+<map id="hardwareWaitTime" name="hardwareWaitTime">
+<area shape="rect" id="node2" href="$payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7" title="Callback function triggered by an incoming message in either the &quot;hopper&#45;request&quot; or &quot;validator&#45;reque..." alt="" coords="184,5,339,32"/>
+<area shape="rect" id="node3" href="$payoutd_8c.html#abdaa5baeaac655f85018190279cc12cb" title="Issues a poll command to the hardware and dispatches the response to the event handler function of th..." alt="" coords="198,56,325,83"/>
+</map>

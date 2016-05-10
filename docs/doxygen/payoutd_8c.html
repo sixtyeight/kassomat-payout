@@ -104,10 +104,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <code>#include &lt;signal.h&gt;</code><br />
 <code>#include &lt;sys/types.h&gt;</code><br />
 <code>#include &lt;sys/stat.h&gt;</code><br />
-<code>#include &quot;port_linux.h&quot;</code><br />
-<code>#include &quot;ssp_defines.h&quot;</code><br />
 <code>#include &quot;ssp_commands.h&quot;</code><br />
-<code>#include &quot;SSPComs.h&quot;</code><br />
 <code>#include &lt;jansson.h&gt;</code><br />
 <code>#include &lt;hiredis/hiredis.h&gt;</code><br />
 <code>#include &lt;hiredis/async.h&gt;</code><br />
@@ -116,6 +113,19 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <code>#include &lt;uuid/uuid.h&gt;</code><br />
 <code>#include &quot;StringBuffer.h&quot;</code><br />
 <code>#include &quot;StringBuffer.c&quot;</code><br />
+</div><div class="textblock"><div class="dynheader">
+Include dependency graph for payoutd.c:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c__incl.png" border="0" usemap="#payoutd_8c" alt=""/></div>
+<map name="payoutd_8c" id="payoutd_8c">
+<area shape="rect" id="node13" href="ssp__commands_8h_source.html" title="ssp_commands.h" alt="" coords="989,80,1114,107"/>
+<area shape="rect" id="node24" href="StringBuffer_8h_source.html" title="StringBuffer.h" alt="" coords="1917,80,2020,107"/>
+<area shape="rect" id="node14" href="port__linux_8h_source.html" title="port_linux.h" alt="" coords="1007,155,1096,181"/>
+<area shape="rect" id="node15" href="SSPComs_8h_source.html" title="SSPComs.h" alt="" coords="1004,229,1099,256"/>
+<area shape="rect" id="node16" href="itl__types_8h_source.html" title="itl_types.h" alt="" coords="951,304,1034,331"/>
+<area shape="rect" id="node17" href="ssp__defines_8h_source.html" title="ssp_defines.h" alt="" coords="1059,304,1161,331"/>
+</map>
+</div>
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Data Structures</h2></td></tr>
@@ -254,29 +264,25 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payou
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a43e3e142be0a60922a20d50820672d37">setup</a> (struct <a class="el" href="structm__metacash.html">m_metacash</a> *metacash)</td></tr>
 <tr class="memdesc:a43e3e142be0a60922a20d50820672d37"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes and configures redis, libevent and the hardware. <br /></td></tr>
 <tr class="separator:a43e3e142be0a60922a20d50820672d37"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b8bc0840980431554dcca7371b87d77"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5b8bc0840980431554dcca7371b87d77"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a5b8bc0840980431554dcca7371b87d77">hopperEventHandler</a> (struct <a class="el" href="structm__device.html">m_device</a> *device, struct <a class="el" href="structm__metacash.html">m_metacash</a> *metacash, <a class="el" href="structSSP__POLL__DATA6.html">SSP_POLL_DATA6</a> *poll)</td></tr>
-<tr class="memdesc:a5b8bc0840980431554dcca7371b87d77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function used for inspecting and publishing events reported by the Hopper hardware. <br /></td></tr>
+<tr class="memitem:a5b8bc0840980431554dcca7371b87d77"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a5b8bc0840980431554dcca7371b87d77">hopperEventHandler</a> (struct <a class="el" href="structm__device.html">m_device</a> *device, struct <a class="el" href="structm__metacash.html">m_metacash</a> *metacash, <a class="el" href="structSSP__POLL__DATA6.html">SSP_POLL_DATA6</a> *poll)</td></tr>
+<tr class="memdesc:a5b8bc0840980431554dcca7371b87d77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function used for inspecting and publishing events reported by the Hopper hardware.  <a href="#a5b8bc0840980431554dcca7371b87d77">More...</a><br /></td></tr>
 <tr class="separator:a5b8bc0840980431554dcca7371b87d77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac32e697eabde481d9782c8a50b0cabad"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac32e697eabde481d9782c8a50b0cabad"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#ac32e697eabde481d9782c8a50b0cabad">validatorEventHandler</a> (struct <a class="el" href="structm__device.html">m_device</a> *device, struct <a class="el" href="structm__metacash.html">m_metacash</a> *metacash, <a class="el" href="structSSP__POLL__DATA6.html">SSP_POLL_DATA6</a> *poll)</td></tr>
-<tr class="memdesc:ac32e697eabde481d9782c8a50b0cabad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function used for inspecting and publishing events reported by the Validator hardware. <br /></td></tr>
+<tr class="memitem:ac32e697eabde481d9782c8a50b0cabad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#ac32e697eabde481d9782c8a50b0cabad">validatorEventHandler</a> (struct <a class="el" href="structm__device.html">m_device</a> *device, struct <a class="el" href="structm__metacash.html">m_metacash</a> *metacash, <a class="el" href="structSSP__POLL__DATA6.html">SSP_POLL_DATA6</a> *poll)</td></tr>
+<tr class="memdesc:ac32e697eabde481d9782c8a50b0cabad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function used for inspecting and publishing events reported by the Validator hardware.  <a href="#ac32e697eabde481d9782c8a50b0cabad">More...</a><br /></td></tr>
 <tr class="separator:ac32e697eabde481d9782c8a50b0cabad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad2e59c7203b3bddc1bc9a2224b52e8e7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad2e59c7203b3bddc1bc9a2224b52e8e7"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#ad2e59c7203b3bddc1bc9a2224b52e8e7">signalHandler</a> (int signal)</td></tr>
 <tr class="memdesc:ad2e59c7203b3bddc1bc9a2224b52e8e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Signal handler. <br /></td></tr>
 <tr class="separator:ad2e59c7203b3bddc1bc9a2224b52e8e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7b835f9f362b154daf20b92245ed57fe"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7b835f9f362b154daf20b92245ed57fe"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a7b835f9f362b154daf20b92245ed57fe">hardwareWaitTime</a> ()</td></tr>
-<tr class="memdesc:a7b835f9f362b154daf20b92245ed57fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Waits for 300ms each time called. <br /></td></tr>
+<tr class="memitem:a7b835f9f362b154daf20b92245ed57fe"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a7b835f9f362b154daf20b92245ed57fe">hardwareWaitTime</a> ()</td></tr>
+<tr class="memdesc:a7b835f9f362b154daf20b92245ed57fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Waits for 300ms each time called.  <a href="#a7b835f9f362b154daf20b92245ed57fe">More...</a><br /></td></tr>
 <tr class="separator:a7b835f9f362b154daf20b92245ed57fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a0239b487dc36abac6fdd2dfa167ec3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7a0239b487dc36abac6fdd2dfa167ec3"></a>
 redisAsyncContext *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a7a0239b487dc36abac6fdd2dfa167ec3">connectRedis</a> (struct <a class="el" href="structm__metacash.html">m_metacash</a> *metacash)</td></tr>
 <tr class="memdesc:a7a0239b487dc36abac6fdd2dfa167ec3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Connect to redis and return a new redisAsyncContext. <br /></td></tr>
 <tr class="separator:a7a0239b487dc36abac6fdd2dfa167ec3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acb7bc72e34521d01ee7a7f94014056c7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="acb7bc72e34521d01ee7a7f94014056c7"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#acb7bc72e34521d01ee7a7f94014056c7">cbOnPollEvent</a> (int fd, short event, void *privdata)</td></tr>
-<tr class="memdesc:acb7bc72e34521d01ee7a7f94014056c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function for libEvent timer triggered "Poll" event. <br /></td></tr>
+<tr class="memitem:acb7bc72e34521d01ee7a7f94014056c7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#acb7bc72e34521d01ee7a7f94014056c7">cbOnPollEvent</a> (int fd, short event, void *privdata)</td></tr>
+<tr class="memdesc:acb7bc72e34521d01ee7a7f94014056c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function for libEvent timer triggered "Poll" event.  <a href="#acb7bc72e34521d01ee7a7f94014056c7">More...</a><br /></td></tr>
 <tr class="separator:acb7bc72e34521d01ee7a7f94014056c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aefd16e913186045840ecc0b068f92460"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aefd16e913186045840ecc0b068f92460"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#aefd16e913186045840ecc0b068f92460">cbOnCheckQuitEvent</a> (int fd, short event, void *privdata)</td></tr>
@@ -302,17 +308,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payou
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a59e00b7363e9f71b5dc9922eb17c60db">publishValidatorEvent</a> (char *format,...)</td></tr>
 <tr class="memdesc:a59e00b7363e9f71b5dc9922eb17c60db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a message to the "validator-event" topic. <br /></td></tr>
 <tr class="separator:a59e00b7363e9f71b5dc9922eb17c60db"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8db34bc06df90ce0c18ed32197a6ef93"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8db34bc06df90ce0c18ed32197a6ef93"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a8db34bc06df90ce0c18ed32197a6ef93">replyWith</a> (char *topic, char *format,...)</td></tr>
-<tr class="memdesc:a8db34bc06df90ce0c18ed32197a6ef93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a message to the given topic. <br /></td></tr>
+<tr class="memitem:a8db34bc06df90ce0c18ed32197a6ef93"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a8db34bc06df90ce0c18ed32197a6ef93">replyWith</a> (char *topic, char *format,...)</td></tr>
+<tr class="memdesc:a8db34bc06df90ce0c18ed32197a6ef93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a message to the given topic.  <a href="#a8db34bc06df90ce0c18ed32197a6ef93">More...</a><br /></td></tr>
 <tr class="separator:a8db34bc06df90ce0c18ed32197a6ef93"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70322d78c585d2ed7ddead275234e5ad"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a70322d78c585d2ed7ddead275234e5ad"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a70322d78c585d2ed7ddead275234e5ad">replyWithPropertyError</a> (struct <a class="el" href="structm__command.html">m_command</a> *cmd, char *name)</td></tr>
-<tr class="memdesc:a70322d78c585d2ed7ddead275234e5ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a reply to a message which was missing a mandatory property (or the property was of the wrong type). <br /></td></tr>
+<tr class="memitem:a70322d78c585d2ed7ddead275234e5ad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a70322d78c585d2ed7ddead275234e5ad">replyWithPropertyError</a> (struct <a class="el" href="structm__command.html">m_command</a> *cmd, char *name)</td></tr>
+<tr class="memdesc:a70322d78c585d2ed7ddead275234e5ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a reply to a message which was missing a mandatory property (or the property was of the wrong type).  <a href="#a70322d78c585d2ed7ddead275234e5ad">More...</a><br /></td></tr>
 <tr class="separator:a70322d78c585d2ed7ddead275234e5ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a983d31ea913e5aeea9854c7afc9d06e5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a983d31ea913e5aeea9854c7afc9d06e5"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a983d31ea913e5aeea9854c7afc9d06e5">replyWithSspResponse</a> (struct <a class="el" href="structm__command.html">m_command</a> *cmd, SSP_RESPONSE_ENUM response)</td></tr>
-<tr class="memdesc:a983d31ea913e5aeea9854c7afc9d06e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a reply to a message which contains a human readable version of the SSP response. <br /></td></tr>
+<tr class="memitem:a983d31ea913e5aeea9854c7afc9d06e5"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a983d31ea913e5aeea9854c7afc9d06e5">replyWithSspResponse</a> (struct <a class="el" href="structm__command.html">m_command</a> *cmd, SSP_RESPONSE_ENUM response)</td></tr>
+<tr class="memdesc:a983d31ea913e5aeea9854c7afc9d06e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to publish a reply to a message which contains a human readable version of the SSP response.  <a href="#a983d31ea913e5aeea9854c7afc9d06e5">More...</a><br /></td></tr>
 <tr class="separator:a983d31ea913e5aeea9854c7afc9d06e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a017349d466b4d2f14d9dff2b032617"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6a017349d466b4d2f14d9dff2b032617"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a6a017349d466b4d2f14d9dff2b032617">handleQuit</a> (struct <a class="el" href="structm__command.html">m_command</a> *cmd)</td></tr>
@@ -390,9 +393,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payo
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#ad29582045823cf068980ba01110c2367">handleConfigureBezel</a> (struct <a class="el" href="structm__command.html">m_command</a> *cmd)</td></tr>
 <tr class="memdesc:ad29582045823cf068980ba01110c2367"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handles the JSON "configure-bezel" command. <br /></td></tr>
 <tr class="separator:ad29582045823cf068980ba01110c2367"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0eb4e127ed384ba54e0af9e5f97656b7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0eb4e127ed384ba54e0af9e5f97656b7"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7">cbOnRequestMessage</a> (redisAsyncContext *c, void *r, void *privdata)</td></tr>
-<tr class="memdesc:a0eb4e127ed384ba54e0af9e5f97656b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function triggered by an incoming message in either the "hopper-request" or "validator-request" topic. <br /></td></tr>
+<tr class="memitem:a0eb4e127ed384ba54e0af9e5f97656b7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7">cbOnRequestMessage</a> (redisAsyncContext *c, void *r, void *privdata)</td></tr>
+<tr class="memdesc:a0eb4e127ed384ba54e0af9e5f97656b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function triggered by an incoming message in either the "hopper-request" or "validator-request" topic.  <a href="#a0eb4e127ed384ba54e0af9e5f97656b7">More...</a><br /></td></tr>
 <tr class="separator:a0eb4e127ed384ba54e0af9e5f97656b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adf328d67ad6a8924e0e55b37edc6c878"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="adf328d67ad6a8924e0e55b37edc6c878"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#adf328d67ad6a8924e0e55b37edc6c878">cbOnConnectPublishContext</a> (const redisAsyncContext *c, int status)</td></tr>
@@ -410,9 +412,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payo
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a20815ab562410f70810b1f36a9ba0242">cbOnDisconnectSubscribeContext</a> (const redisAsyncContext *c, int status)</td></tr>
 <tr class="memdesc:a20815ab562410f70810b1f36a9ba0242"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function triggered by the redis client on disconnecting with the "subscribe" context. <br /></td></tr>
 <tr class="separator:a20815ab562410f70810b1f36a9ba0242"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ddf1224851353fc92bfbff6f499fa97"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0ddf1224851353fc92bfbff6f499fa97"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a0ddf1224851353fc92bfbff6f499fa97">main</a> (int argc, char *argv[])</td></tr>
-<tr class="memdesc:a0ddf1224851353fc92bfbff6f499fa97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?. <br /></td></tr>
+<tr class="memitem:a0ddf1224851353fc92bfbff6f499fa97"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a0ddf1224851353fc92bfbff6f499fa97">main</a> (int argc, char *argv[])</td></tr>
+<tr class="memdesc:a0ddf1224851353fc92bfbff6f499fa97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?.  <a href="#a0ddf1224851353fc92bfbff6f499fa97">More...</a><br /></td></tr>
 <tr class="separator:a0ddf1224851353fc92bfbff6f499fa97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
@@ -453,6 +454,12 @@ const unsigned char&#160;</td><td class="memItemRight" valign="bottom"><a class=
 const unsigned char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#afae4833784ec5d4e5747803ffc31e29a">SSP_OPTION_DISABLED</a> = 0x02</td></tr>
 <tr class="memdesc:afae4833784ec5d4e5747803ffc31e29a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Magic Constant for the "disabled" option in configure bezel as specified in SSP. <br /></td></tr>
 <tr class="separator:afae4833784ec5d4e5747803ffc31e29a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae728347b8f55d8c72ca6c33521e44e96"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae728347b8f55d8c72ca6c33521e44e96"></a>
+static const unsigned long long&#160;</td><td class="memItemRight" valign="bottom"><b>DEFAULT_KEY</b> = 0x123456701234567LL</td></tr>
+<tr class="separator:ae728347b8f55d8c72ca6c33521e44e96"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a973ecbc8c70f89cf46bb589d484bce25"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a973ecbc8c70f89cf46bb589d484bce25"></a>
+static const char *&#160;</td><td class="memItemRight" valign="bottom"><b>CURRENCY</b> = &quot;EUR&quot;</td></tr>
+<tr class="separator:a973ecbc8c70f89cf46bb589d484bce25"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06524806bac53583688232b22a2367b3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a06524806bac53583688232b22a2367b3"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payoutd_8c.html#a06524806bac53583688232b22a2367b3">receivedSignal</a> = 0</td></tr>
 <tr class="memdesc:a06524806bac53583688232b22a2367b3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set by the signalHandler function and checked in cbCheckQuit. <br /></td></tr>
@@ -476,7 +483,451 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="payou
 <li>those poll handler functions are <a class="el" href="payoutd_8c.html#a5b8bc0840980431554dcca7371b87d77" title="Callback function used for inspecting and publishing events reported by the Hopper hardware...">hopperEventHandler()</a> and <a class="el" href="payoutd_8c.html#ac32e697eabde481d9782c8a50b0cabad" title="Callback function used for inspecting and publishing events reported by the Validator hardware...">validatorEventHandler()</a></li>
 <li>on startup/exiting of the daemon started/exiting messages are published to the 'payout-event' topic </li>
 </ul>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Function Documentation</h2>
+<a class="anchor" id="acb7bc72e34521d01ee7a7f94014056c7"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void cbOnPollEvent </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>fd</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">short&#160;</td>
+          <td class="paramname"><em>event</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>privdata</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Callback function for libEvent timer triggered "Poll" event. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_acb7bc72e34521d01ee7a7f94014056c7_cgraph.png" border="0" usemap="#payoutd_8c_acb7bc72e34521d01ee7a7f94014056c7_cgraph" alt=""/></div>
+<map name="payoutd_8c_acb7bc72e34521d01ee7a7f94014056c7_cgraph" id="payoutd_8c_acb7bc72e34521d01ee7a7f94014056c7_cgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#abdaa5baeaac655f85018190279cc12cb" title="Issues a poll command to the hardware and dispatches the response to the event handler function of th..." alt="" coords="163,5,289,32"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a0eb4e127ed384ba54e0af9e5f97656b7"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void cbOnRequestMessage </td>
+          <td>(</td>
+          <td class="paramtype">redisAsyncContext *&#160;</td>
+          <td class="paramname"><em>c</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>r</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>privdata</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Callback function triggered by an incoming message in either the "hopper-request" or "validator-request" topic. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a0eb4e127ed384ba54e0af9e5f97656b7_cgraph.png" border="0" usemap="#payoutd_8c_a0eb4e127ed384ba54e0af9e5f97656b7_cgraph" alt=""/></div>
+<map name="payoutd_8c_a0eb4e127ed384ba54e0af9e5f97656b7_cgraph" id="payoutd_8c_a0eb4e127ed384ba54e0af9e5f97656b7_cgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a7b835f9f362b154daf20b92245ed57fe" title="Waits for 300ms each time called. " alt="" coords="242,5,373,32"/>
+<area shape="rect" id="node3" href="payoutd_8c.html#a8db34bc06df90ce0c18ed32197a6ef93" title="Helper function to publish a message to the given topic. " alt="" coords="269,56,346,83"/>
+<area shape="rect" id="node4" href="payoutd_8c.html#a70322d78c585d2ed7ddead275234e5ad" title="Helper function to publish a reply to a message which was missing a mandatory property (or the proper..." alt="" coords="230,107,385,133"/>
+<area shape="rect" id="node5" href="payoutd_8c.html#af4f0fc778c0ad37b72a92d237d6c1658" title="Test if cmd.command equals command. " alt="" coords="261,157,353,184"/>
+<area shape="rect" id="node6" href="payoutd_8c.html#a6a017349d466b4d2f14d9dff2b032617" title="Handles the JSON &quot;quit&quot; command. " alt="" coords="265,208,349,235"/>
+<area shape="rect" id="node7" href="payoutd_8c.html#a913c3422bbead851b571c40784c7365e" title="Handles the JSON &quot;test&quot; command. " alt="" coords="264,259,351,285"/>
+<area shape="rect" id="node8" href="payoutd_8c.html#ad29582045823cf068980ba01110c2367" title="Handles the JSON &quot;configure&#45;bezel&quot; command. " alt="" coords="233,309,382,336"/>
+<area shape="rect" id="node9" href="payoutd_8c.html#a2b6baaac084991183bffa4f60df21654" title="Handles the JSON &quot;empty&quot; command. " alt="" coords="258,360,357,387"/>
+<area shape="rect" id="node10" href="payoutd_8c.html#af481ccfd3457b5d443c5fc350f7eb049" title="Handles the JSON &quot;smart&#45;empty&quot; command. " alt="" coords="241,411,374,437"/>
+<area shape="rect" id="node11" href="payoutd_8c.html#a19cea4682066690ef517e96be07634bc" title="Handles the JSON &quot;enable&quot; command. " alt="" coords="257,461,357,488"/>
+<area shape="rect" id="node12" href="payoutd_8c.html#aeb52e0dc7c8e0025e118f26874e634ac" title="Handles the JSON &quot;disable&quot; command. " alt="" coords="255,512,359,539"/>
+<area shape="rect" id="node13" href="payoutd_8c.html#ab3bf7e351c86140be8ee8dca7a4847e7" title="Handles the JSON &quot;enable&#45;channels&quot; command. " alt="" coords="230,563,385,589"/>
+<area shape="rect" id="node14" href="payoutd_8c.html#a7ecf117fed4073b390eee78eaafaf52c" title="Handles the JSON &quot;disable&#45;channels&quot; command. " alt="" coords="228,613,387,640"/>
+<area shape="rect" id="node15" href="payoutd_8c.html#aa6f5a77d76c6476b6c3064a14200bb29" title="Handles the JSON &quot;inhibit&#45;channels&quot; command. " alt="" coords="232,664,383,691"/>
+<area shape="rect" id="node16" href="payoutd_8c.html#acbcf38d2b9f851ea543913ce587af4ff" title="Handles the JSON &quot;do&#45;float&quot; and &quot;test&#45;float&quot; commands. " alt="" coords="263,715,352,741"/>
+<area shape="rect" id="node17" href="payoutd_8c.html#a1d9f149fb793ac5d26049106e073e000" title="Handles the JSON &quot;do&#45;payout&quot; and &quot;test&#45;payout&quot; commands. " alt="" coords="257,765,358,792"/>
+<area shape="rect" id="node18" href="payoutd_8c.html#aece62bc895c99d8f2163f96f6a4ea0e8" title="Handles the JSON &quot;get&#45;firmware&#45;version&quot; command. " alt="" coords="218,816,397,843"/>
+<area shape="rect" id="node19" href="payoutd_8c.html#abd3318ecbeaee0f834296b0d78d59019" title="Handles the JSON &quot;get&#45;dataset&#45;version&quot; command. " alt="" coords="222,867,393,893"/>
+<area shape="rect" id="node20" href="payoutd_8c.html#abf106327db934d65dd864dbfd4964153" title="Handles the JSON &quot;channel&#45;security&quot; command. " alt="" coords="215,917,399,944"/>
+<area shape="rect" id="node21" href="payoutd_8c.html#aac5597f06c73e9a9c6c86a736bcccb4b" title="Handles the JSON &quot;get&#45;all&#45;levels&quot; command. " alt="" coords="240,968,375,995"/>
+<area shape="rect" id="node22" href="payoutd_8c.html#a85640d4476b62388a06263c321abe19f" title="Handles the JSON &quot;set&#45;denomination&#45;levels&quot; command. " alt="" coords="208,1019,407,1045"/>
+<area shape="rect" id="node23" href="payoutd_8c.html#a9741a956b74002680409a7fe3cdc1697" title="Handles the JSON &quot;last&#45;reject&#45;note&quot; command. " alt="" coords="232,1069,383,1096"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a7b835f9f362b154daf20b92245ed57fe"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void hardwareWaitTime </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Waits for 300ms each time called. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a7b835f9f362b154daf20b92245ed57fe_icgraph.png" border="0" usemap="#payoutd_8c_a7b835f9f362b154daf20b92245ed57fe_icgraph" alt=""/></div>
+<map name="payoutd_8c_a7b835f9f362b154daf20b92245ed57fe_icgraph" id="payoutd_8c_a7b835f9f362b154daf20b92245ed57fe_icgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7" title="Callback function triggered by an incoming message in either the &quot;hopper&#45;request&quot; or &quot;validator&#45;reque..." alt="" coords="184,5,339,32"/>
+<area shape="rect" id="node3" href="payoutd_8c.html#abdaa5baeaac655f85018190279cc12cb" title="Issues a poll command to the hardware and dispatches the response to the event handler function of th..." alt="" coords="198,56,325,83"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a5b8bc0840980431554dcca7371b87d77"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void hopperEventHandler </td>
+          <td>(</td>
+          <td class="paramtype">struct <a class="el" href="structm__device.html">m_device</a> *&#160;</td>
+          <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">struct <a class="el" href="structm__metacash.html">m_metacash</a> *&#160;</td>
+          <td class="paramname"><em>metacash</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSSP__POLL__DATA6.html">SSP_POLL_DATA6</a> *&#160;</td>
+          <td class="paramname"><em>poll</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Callback function used for inspecting and publishing events reported by the Hopper hardware. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a5b8bc0840980431554dcca7371b87d77_cgraph.png" border="0" usemap="#payoutd_8c_a5b8bc0840980431554dcca7371b87d77_cgraph" alt=""/></div>
+<map name="payoutd_8c_a5b8bc0840980431554dcca7371b87d77_cgraph" id="payoutd_8c_a5b8bc0840980431554dcca7371b87d77_cgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a91175f8d08325716034a50e0311322ee" title="Helper function to publish a message to the &quot;hopper&#45;event&quot; topic. " alt="" coords="193,5,332,32"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a0ddf1224851353fc92bfbff6f499fa97"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int main </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>argc</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>argv</em>[]&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?. </p>
+<p>Warning: both "calls" to <a class="el" href="payoutd_8c.html#a5b8bc0840980431554dcca7371b87d77" title="Callback function used for inspecting and publishing events reported by the Hopper hardware...">hopperEventHandler()</a> and <a class="el" href="payoutd_8c.html#ac32e697eabde481d9782c8a50b0cabad" title="Callback function used for inspecting and publishing events reported by the Validator hardware...">validatorEventHandler()</a> in the callgraph are false positives! </p>
+
+<p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a0ddf1224851353fc92bfbff6f499fa97_cgraph.png" border="0" usemap="#payoutd_8c_a0ddf1224851353fc92bfbff6f499fa97_cgraph" alt=""/></div>
+<map name="payoutd_8c_a0ddf1224851353fc92bfbff6f499fa97_cgraph" id="payoutd_8c_a0ddf1224851353fc92bfbff6f499fa97_cgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#ad2e59c7203b3bddc1bc9a2224b52e8e7" title="Signal handler. " alt="" coords="139,5,240,32"/>
+<area shape="rect" id="node3" href="payoutd_8c.html#a5b8bc0840980431554dcca7371b87d77" title="Callback function used for inspecting and publishing events reported by the Hopper hardware..." alt="" coords="119,56,259,83"/>
+<area shape="rect" id="node5" href="payoutd_8c.html#ac32e697eabde481d9782c8a50b0cabad" title="Callback function used for inspecting and publishing events reported by the Validator hardware..." alt="" coords="114,107,265,133"/>
+<area shape="rect" id="node7" href="payoutd_8c.html#ae443387b74fb23fa8caca5b9eb6acae9" title="Parse the command line arguments. " alt="" coords="136,157,243,184"/>
+<area shape="rect" id="node8" href="payoutd_8c.html#a8d12150d56c77b5c3d1624a759b74be6" title="Opens the serial device. " alt="" coords="105,208,273,235"/>
+<area shape="rect" id="node9" href="payoutd_8c.html#a43e3e142be0a60922a20d50820672d37" title="Initializes and configures redis, libevent and the hardware. " alt="" coords="162,259,217,285"/>
+<area shape="rect" id="node10" href="payoutd_8c.html#a9d48226976c3c3801344c2165420803e" title="Helper function to publish a message to the &quot;payout&#45;event&quot; topic. " alt="" coords="120,309,259,336"/>
+<area shape="rect" id="node11" href="payoutd_8c.html#ac4bb6e155aabd3b6a2c6db28399135e5" title="Closes the serial device. " alt="" coords="104,360,275,387"/>
+<area shape="rect" id="node4" href="payoutd_8c.html#a91175f8d08325716034a50e0311322ee" title="Helper function to publish a message to the &quot;hopper&#45;event&quot; topic. " alt="" coords="327,56,466,83"/>
+<area shape="rect" id="node6" href="payoutd_8c.html#a59e00b7363e9f71b5dc9922eb17c60db" title="Helper function to publish a message to the &quot;validator&#45;event&quot; topic. " alt="" coords="323,107,471,133"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a8db34bc06df90ce0c18ed32197a6ef93"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int replyWith </td>
+          <td>(</td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>topic</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>format</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>...</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Helper function to publish a message to the given topic. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a8db34bc06df90ce0c18ed32197a6ef93_icgraph.png" border="0" usemap="#payoutd_8c_a8db34bc06df90ce0c18ed32197a6ef93_icgraph" alt=""/></div>
+<map name="payoutd_8c_a8db34bc06df90ce0c18ed32197a6ef93_icgraph" id="payoutd_8c_a8db34bc06df90ce0c18ed32197a6ef93_icgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a70322d78c585d2ed7ddead275234e5ad" title="Helper function to publish a reply to a message which was missing a mandatory property (or the proper..." alt="" coords="133,208,287,235"/>
+<area shape="rect" id="node3" href="payoutd_8c.html#a1d9f149fb793ac5d26049106e073e000" title="Handles the JSON &quot;do&#45;payout&quot; and &quot;test&#45;payout&quot; commands. " alt="" coords="386,56,487,83"/>
+<area shape="rect" id="node4" href="payoutd_8c.html#acbcf38d2b9f851ea543913ce587af4ff" title="Handles the JSON &quot;do&#45;float&quot; and &quot;test&#45;float&quot; commands. " alt="" coords="392,107,481,133"/>
+<area shape="rect" id="node10" href="payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7" title="Callback function triggered by an incoming message in either the &quot;hopper&#45;request&quot; or &quot;validator&#45;reque..." alt="" coords="359,5,514,32"/>
+<area shape="rect" id="node11" href="payoutd_8c.html#a983d31ea913e5aeea9854c7afc9d06e5" title="Helper function to publish a reply to a message which contains a human readable version of the SSP re..." alt="" coords="131,461,289,488"/>
+<area shape="rect" id="node17" href="payoutd_8c.html#aac5597f06c73e9a9c6c86a736bcccb4b" title="Handles the JSON &quot;get&#45;all&#45;levels&quot; command. " alt="" coords="369,715,504,741"/>
+<area shape="rect" id="node18" href="payoutd_8c.html#aece62bc895c99d8f2163f96f6a4ea0e8" title="Handles the JSON &quot;get&#45;firmware&#45;version&quot; command. " alt="" coords="347,765,526,792"/>
+<area shape="rect" id="node19" href="payoutd_8c.html#abd3318ecbeaee0f834296b0d78d59019" title="Handles the JSON &quot;get&#45;dataset&#45;version&quot; command. " alt="" coords="351,816,522,843"/>
+<area shape="rect" id="node20" href="payoutd_8c.html#a9741a956b74002680409a7fe3cdc1697" title="Handles the JSON &quot;last&#45;reject&#45;note&quot; command. " alt="" coords="361,867,512,893"/>
+<area shape="rect" id="node5" href="payoutd_8c.html#ab3bf7e351c86140be8ee8dca7a4847e7" title="Handles the JSON &quot;enable&#45;channels&quot; command. " alt="" coords="359,259,514,285"/>
+<area shape="rect" id="node6" href="payoutd_8c.html#a7ecf117fed4073b390eee78eaafaf52c" title="Handles the JSON &quot;disable&#45;channels&quot; command. " alt="" coords="357,309,516,336"/>
+<area shape="rect" id="node7" href="payoutd_8c.html#aa6f5a77d76c6476b6c3064a14200bb29" title="Handles the JSON &quot;inhibit&#45;channels&quot; command. " alt="" coords="361,360,512,387"/>
+<area shape="rect" id="node8" href="payoutd_8c.html#a85640d4476b62388a06263c321abe19f" title="Handles the JSON &quot;set&#45;denomination&#45;levels&quot; command. " alt="" coords="337,157,536,184"/>
+<area shape="rect" id="node9" href="payoutd_8c.html#ad29582045823cf068980ba01110c2367" title="Handles the JSON &quot;configure&#45;bezel&quot; command. " alt="" coords="362,208,511,235"/>
+<area shape="rect" id="node12" href="payoutd_8c.html#a6a017349d466b4d2f14d9dff2b032617" title="Handles the JSON &quot;quit&quot; command. " alt="" coords="395,411,479,437"/>
+<area shape="rect" id="node13" href="payoutd_8c.html#a2b6baaac084991183bffa4f60df21654" title="Handles the JSON &quot;empty&quot; command. " alt="" coords="387,461,486,488"/>
+<area shape="rect" id="node14" href="payoutd_8c.html#af481ccfd3457b5d443c5fc350f7eb049" title="Handles the JSON &quot;smart&#45;empty&quot; command. " alt="" coords="370,512,503,539"/>
+<area shape="rect" id="node15" href="payoutd_8c.html#a19cea4682066690ef517e96be07634bc" title="Handles the JSON &quot;enable&quot; command. " alt="" coords="387,563,487,589"/>
+<area shape="rect" id="node16" href="payoutd_8c.html#aeb52e0dc7c8e0025e118f26874e634ac" title="Handles the JSON &quot;disable&quot; command. " alt="" coords="385,613,489,640"/>
+<area shape="rect" id="node21" href="payoutd_8c.html#a913c3422bbead851b571c40784c7365e" title="Handles the JSON &quot;test&quot; command. " alt="" coords="393,664,480,691"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a70322d78c585d2ed7ddead275234e5ad"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int replyWithPropertyError </td>
+          <td>(</td>
+          <td class="paramtype">struct <a class="el" href="structm__command.html">m_command</a> *&#160;</td>
+          <td class="paramname"><em>cmd</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>name</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Helper function to publish a reply to a message which was missing a mandatory property (or the property was of the wrong type). </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a70322d78c585d2ed7ddead275234e5ad_icgraph.png" border="0" usemap="#payoutd_8c_a70322d78c585d2ed7ddead275234e5ad_icgraph" alt=""/></div>
+<map name="payoutd_8c_a70322d78c585d2ed7ddead275234e5ad_icgraph" id="payoutd_8c_a70322d78c585d2ed7ddead275234e5ad_icgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a1d9f149fb793ac5d26049106e073e000" title="Handles the JSON &quot;do&#45;payout&quot; and &quot;test&#45;payout&quot; commands. " alt="" coords="257,5,358,32"/>
+<area shape="rect" id="node3" href="payoutd_8c.html#acbcf38d2b9f851ea543913ce587af4ff" title="Handles the JSON &quot;do&#45;float&quot; and &quot;test&#45;float&quot; commands. " alt="" coords="263,56,352,83"/>
+<area shape="rect" id="node4" href="payoutd_8c.html#ab3bf7e351c86140be8ee8dca7a4847e7" title="Handles the JSON &quot;enable&#45;channels&quot; command. " alt="" coords="230,107,385,133"/>
+<area shape="rect" id="node5" href="payoutd_8c.html#a7ecf117fed4073b390eee78eaafaf52c" title="Handles the JSON &quot;disable&#45;channels&quot; command. " alt="" coords="228,157,387,184"/>
+<area shape="rect" id="node6" href="payoutd_8c.html#aa6f5a77d76c6476b6c3064a14200bb29" title="Handles the JSON &quot;inhibit&#45;channels&quot; command. " alt="" coords="232,208,383,235"/>
+<area shape="rect" id="node7" href="payoutd_8c.html#a85640d4476b62388a06263c321abe19f" title="Handles the JSON &quot;set&#45;denomination&#45;levels&quot; command. " alt="" coords="208,259,407,285"/>
+<area shape="rect" id="node8" href="payoutd_8c.html#ad29582045823cf068980ba01110c2367" title="Handles the JSON &quot;configure&#45;bezel&quot; command. " alt="" coords="233,309,382,336"/>
+<area shape="rect" id="node9" href="payoutd_8c.html#a0eb4e127ed384ba54e0af9e5f97656b7" title="Callback function triggered by an incoming message in either the &quot;hopper&#45;request&quot; or &quot;validator&#45;reque..." alt="" coords="230,360,385,387"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a983d31ea913e5aeea9854c7afc9d06e5"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int replyWithSspResponse </td>
+          <td>(</td>
+          <td class="paramtype">struct <a class="el" href="structm__command.html">m_command</a> *&#160;</td>
+          <td class="paramname"><em>cmd</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">SSP_RESPONSE_ENUM&#160;</td>
+          <td class="paramname"><em>response</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Helper function to publish a reply to a message which contains a human readable version of the SSP response. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_a983d31ea913e5aeea9854c7afc9d06e5_icgraph.png" border="0" usemap="#payoutd_8c_a983d31ea913e5aeea9854c7afc9d06e5_icgraph" alt=""/></div>
+<map name="payoutd_8c_a983d31ea913e5aeea9854c7afc9d06e5_icgraph" id="payoutd_8c_a983d31ea913e5aeea9854c7afc9d06e5_icgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a6a017349d466b4d2f14d9dff2b032617" title="Handles the JSON &quot;quit&quot; command. " alt="" coords="269,5,353,32"/>
+<area shape="rect" id="node3" href="payoutd_8c.html#a2b6baaac084991183bffa4f60df21654" title="Handles the JSON &quot;empty&quot; command. " alt="" coords="262,56,361,83"/>
+<area shape="rect" id="node4" href="payoutd_8c.html#af481ccfd3457b5d443c5fc350f7eb049" title="Handles the JSON &quot;smart&#45;empty&quot; command. " alt="" coords="245,107,378,133"/>
+<area shape="rect" id="node5" href="payoutd_8c.html#a1d9f149fb793ac5d26049106e073e000" title="Handles the JSON &quot;do&#45;payout&quot; and &quot;test&#45;payout&quot; commands. " alt="" coords="261,157,362,184"/>
+<area shape="rect" id="node6" href="payoutd_8c.html#acbcf38d2b9f851ea543913ce587af4ff" title="Handles the JSON &quot;do&#45;float&quot; and &quot;test&#45;float&quot; commands. " alt="" coords="267,208,356,235"/>
+<area shape="rect" id="node7" href="payoutd_8c.html#ab3bf7e351c86140be8ee8dca7a4847e7" title="Handles the JSON &quot;enable&#45;channels&quot; command. " alt="" coords="234,259,389,285"/>
+<area shape="rect" id="node8" href="payoutd_8c.html#a7ecf117fed4073b390eee78eaafaf52c" title="Handles the JSON &quot;disable&#45;channels&quot; command. " alt="" coords="232,309,391,336"/>
+<area shape="rect" id="node9" href="payoutd_8c.html#aa6f5a77d76c6476b6c3064a14200bb29" title="Handles the JSON &quot;inhibit&#45;channels&quot; command. " alt="" coords="236,360,387,387"/>
+<area shape="rect" id="node10" href="payoutd_8c.html#a19cea4682066690ef517e96be07634bc" title="Handles the JSON &quot;enable&quot; command. " alt="" coords="261,411,361,437"/>
+<area shape="rect" id="node11" href="payoutd_8c.html#aeb52e0dc7c8e0025e118f26874e634ac" title="Handles the JSON &quot;disable&quot; command. " alt="" coords="259,461,363,488"/>
+<area shape="rect" id="node12" href="payoutd_8c.html#a85640d4476b62388a06263c321abe19f" title="Handles the JSON &quot;set&#45;denomination&#45;levels&quot; command. " alt="" coords="212,512,411,539"/>
+<area shape="rect" id="node13" href="payoutd_8c.html#aac5597f06c73e9a9c6c86a736bcccb4b" title="Handles the JSON &quot;get&#45;all&#45;levels&quot; command. " alt="" coords="244,563,379,589"/>
+<area shape="rect" id="node14" href="payoutd_8c.html#aece62bc895c99d8f2163f96f6a4ea0e8" title="Handles the JSON &quot;get&#45;firmware&#45;version&quot; command. " alt="" coords="222,613,401,640"/>
+<area shape="rect" id="node15" href="payoutd_8c.html#abd3318ecbeaee0f834296b0d78d59019" title="Handles the JSON &quot;get&#45;dataset&#45;version&quot; command. " alt="" coords="226,664,397,691"/>
+<area shape="rect" id="node16" href="payoutd_8c.html#a9741a956b74002680409a7fe3cdc1697" title="Handles the JSON &quot;last&#45;reject&#45;note&quot; command. " alt="" coords="236,715,387,741"/>
+<area shape="rect" id="node17" href="payoutd_8c.html#a913c3422bbead851b571c40784c7365e" title="Handles the JSON &quot;test&quot; command. " alt="" coords="268,765,355,792"/>
+<area shape="rect" id="node18" href="payoutd_8c.html#ad29582045823cf068980ba01110c2367" title="Handles the JSON &quot;configure&#45;bezel&quot; command. " alt="" coords="237,816,386,843"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="ac32e697eabde481d9782c8a50b0cabad"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void validatorEventHandler </td>
+          <td>(</td>
+          <td class="paramtype">struct <a class="el" href="structm__device.html">m_device</a> *&#160;</td>
+          <td class="paramname"><em>device</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">struct <a class="el" href="structm__metacash.html">m_metacash</a> *&#160;</td>
+          <td class="paramname"><em>metacash</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSSP__POLL__DATA6.html">SSP_POLL_DATA6</a> *&#160;</td>
+          <td class="paramname"><em>poll</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Callback function used for inspecting and publishing events reported by the Validator hardware. </p>
+<p>Details only to get graph. </p>
+
+<p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="payoutd_8c_ac32e697eabde481d9782c8a50b0cabad_cgraph.png" border="0" usemap="#payoutd_8c_ac32e697eabde481d9782c8a50b0cabad_cgraph" alt=""/></div>
+<map name="payoutd_8c_ac32e697eabde481d9782c8a50b0cabad_cgraph" id="payoutd_8c_ac32e697eabde481d9782c8a50b0cabad_cgraph">
+<area shape="rect" id="node2" href="payoutd_8c.html#a59e00b7363e9f71b5dc9922eb17c60db" title="Helper function to publish a message to the &quot;validator&#45;event&quot; topic. " alt="" coords="204,5,352,32"/>
+</map>
+</div>
+</p>
+
+</div>
+</div>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">
