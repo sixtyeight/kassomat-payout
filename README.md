@@ -7,6 +7,14 @@ and [NV200 Banknote validator][itl-hw-validator] devices.
 
 Doxygen HTML help can be found in docs/doxygen.
 
+## Dependencies
+
+* mandatory for build: `sudo apt install build-essential libhiredis-dev libevent-dev libjansson-dev uuid-dev` 
+
+* runtime: `sudo apt install redis-server`
+
+* development: `sudo apt install doxygen uuid-runtime valgrind redis-tools`
+
 [read more ...](docs/overview.md)
 
 [itl-ssp]: http://innovative-technology.com/product-files/ssp-manuals/smart-payout-ssp-manual.pdf
