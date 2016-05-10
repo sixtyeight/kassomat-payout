@@ -13,7 +13,7 @@ Doxygen HTML help can be found in docs/doxygen.
 
 * runtime: `sudo apt install redis-server`
 
-* development: `sudo apt install doxygen uuid-runtime valgrind redis-tools`
+* development: `sudo apt install doxygen graphviz uuid-runtime valgrind redis-tools`
 
 [read more ...](docs/overview.md)
 
