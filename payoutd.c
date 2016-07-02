@@ -864,17 +864,17 @@ void handleLastRejectNote(struct m_command *cmd) {
 		case 0x01: // Note length incorrect
 			reason = "note length incorrect";
 			break;
-		case 0x02: // Reject reason 2
-			reason = "undisclosed (reject reason 2)";
+		case 0x02: // Average fail
+			reason = "internal validation failure: average fail";
 			break;
-		case 0x03: // Reject reason 3
-			reason = "undisclosed (reject reason 3)";
+		case 0x03: // Coastline fail
+			reason = "internal validation failure: coastline fail";
 			break;
-		case 0x04: // Reject reason 4
-			reason = "undisclosed (reject reason 4)";
+		case 0x04: // Graph fail
+			reason = "internal validation failure: graph fail";
 			break;
-		case 0x05: // Reject reason 5
-			reason = "undisclosed (reject reason 5)";
+		case 0x05: // Buried fail
+			reason = "internal validation failure: buried fail";
 			break;
 		case 0x06: // Channel inhibited
 			reason = "channel inhibited";
@@ -882,20 +882,20 @@ void handleLastRejectNote(struct m_command *cmd) {
 		case 0x07: // Second note inserted
 			reason = "second note inserted";
 			break;
-		case 0x08: // Reject reason 8
-			reason = "undisclosed (reject reason 8)";
+		case 0x08: // Reject by host
+			reason = "reject by host";
 			break;
 		case 0x09: // Note recognised in more than one channel
 			reason = "note recognised in more than one channel";
 			break;
 		case 0x0A: // Reject reason 10
-			reason = "undisclosed (reject reason 10)";
+			reason = "rear sensor error";
 			break;
 		case 0x0B: // Note too long
 			reason = "note too long";
 			break;
-		case 0x0C: // Reject reason 12
-			reason = "undisclosed (reject reason 12)";
+		case 0x0C: // Disabled by host
+			reason = "disabled by host";
 			break;
 		case 0x0D: // Mechanism slow/stalled
 			reason = "mechanism slow/stalled";
