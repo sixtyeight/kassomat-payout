@@ -18,6 +18,9 @@
 **.app
 /.cproject
 /.project
+/.autotools
+/.settings
+
 /BasicValidator
 /payoutd
 
