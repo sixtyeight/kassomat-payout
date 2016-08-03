@@ -1297,7 +1297,7 @@ int main(int argc, char *argv[]) {
 int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
-	char c;
+	int c;
 	while ((c = getopt(argc, argv, "h:p:d:")) != -1) {
 		switch (c) {
 		case 'h':
