@@ -49,7 +49,7 @@ clean :
 # Release_target
 
 Release_target.BIN = payoutd 
-Release_target.OBJ = payoutd.o linux.o
+Release_target.OBJ = payoutd.o libitlssp/linux.o
 DEP_FILES += payoutd.d 
 clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ)
 
