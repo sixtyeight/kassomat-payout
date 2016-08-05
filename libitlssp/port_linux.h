@@ -6,7 +6,7 @@
 #endif
 #define INCLUDED_PORT
 
-#include "SSPComs.h"
+#include "../libitlssp/SSPComs.h"
 
 // Linux does not need to do any initialisation for the SSP library
 #define init_lib()

@@ -34,7 +34,7 @@
 // lowlevel library provided by the cash hardware vendor
 // innovative technologies (http://innovative-technology.com).
 // ssp manual available at http://innovative-technology.com/images/pdocuments/manuals/SSP_Manual.pdf
-#include "ssp_commands.h"
+#include "libitlssp/ssp_commands.h"
 
 // json library
 #include <jansson.h>

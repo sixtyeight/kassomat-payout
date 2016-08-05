@@ -1,17 +1,18 @@
 
-#include "ITLSSPProc.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 
-#include "Random.h"
-#include "Encryption.h"
-#include "../SSPComs.h"
-#include "serialfunc.h"
-#include "../ssp_defines.h"
 #include <pthread.h>
+
+#include "../libitlssp/Encryption.h"
+#include "../libitlssp/ITLSSPProc.h"
+#include "../libitlssp/Random.h"
+#include "../libitlssp/serialfunc.h"
+#include "../libitlssp/ssp_defines.h"
+#include "../libitlssp/SSPComs.h"
 unsigned char download_in_progress;
 unsigned long download_block;
 /*

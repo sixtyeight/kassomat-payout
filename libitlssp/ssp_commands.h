@@ -3,9 +3,9 @@
 #define BASIC_DEMO6_SSP_HELPERS_H
 
 #ifdef WIN32
-#include "port_win32_ssp.h"
+#include "lib/port_win32_ssp.h"
 #else
-#include "port_linux.h"
+#include "../libitlssp/port_linux.h"
 #endif
 
 #include <stdio.h>

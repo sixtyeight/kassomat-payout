@@ -1,3 +1,4 @@
+
 #define BSD_COMP
 #include <stdio.h>   /* Standard input/output definitions */
 #include <string.h>  /* String function definitions */
@@ -6,8 +7,8 @@
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
-#include "../itl_types.h"
-#include "serialfunc.h"
+#include "../libitlssp/itl_types.h"
+#include "../libitlssp/serialfunc.h"
 //#include <asm/termios.h>
 #define FIONREAD 0x541B
 //port is the device name ( eg /dev/ttyUSB0 )

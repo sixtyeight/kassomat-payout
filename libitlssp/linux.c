@@ -1,10 +1,10 @@
 
-#include "port_linux.h"
-
 #include <termios.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
+
+#include "../libitlssp/port_linux.h"
 
 
 static int open_port = 0;

@@ -1,13 +1,15 @@
 
-#include "ITLSSPProc.h"
+#include "../libitlssp/ITLSSPProc.h"
+
 #include <stdlib.h>
-#include "Random.h"
-#include "Encryption.h"
-#include "../ssp_defines.h"
 #include <unistd.h>
 #include <stdio.h>
 
 #include <pthread.h>
+
+#include "../libitlssp/Encryption.h"
+#include "../libitlssp/Random.h"
+#include "../libitlssp/ssp_defines.h"
 extern unsigned char download_in_progress;
 
 

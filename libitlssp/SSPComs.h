@@ -1,12 +1,13 @@
 
 #ifndef _ITLSSPCOMSH
 #define _ITLSSPCOMSH
+
 #define CCONV _stdcall
 #define NOMANGLE
 
 
-#include "itl_types.h"
-#include "ssp_defines.h"
+#include "../libitlssp/itl_types.h"
+#include "../libitlssp/ssp_defines.h"
 
 #ifdef __cplusplus
  extern "C" {

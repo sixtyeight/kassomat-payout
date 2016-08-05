@@ -1,9 +1,11 @@
 
 //#include "stdafx.h"
-#include "../itl_types.h"
+#include "../libitlssp/Random.h"
+
 #include <stdlib.h>
 #include <time.h>
-#include "Random.h"
+
+#include "../libitlssp/itl_types.h"
 
 
 

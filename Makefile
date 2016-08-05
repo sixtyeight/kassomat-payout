@@ -11,7 +11,7 @@ CFLAGS_C = $(filter-out -include "sdk.h",$(CFLAGS))
 
 CFLAGS = -Wall -g -O0
 INCLUDES = 
-LDFLAGS =  -s
+LDFLAGS = -s
 RCFLAGS = 
 \LDLIBS = $(T_LDLIBS)  -lstdc++ -lpthread
 LDLIBS = $(T_LDLIBS)  -lpthread -lhiredis -levent -luuid -ljansson
@@ -33,13 +33,13 @@ COMPILE_rc = windres $(RCFLAGS) -J rc -O coff -i $< -o $@ -I$(dir $<)
 all: all.before all.targets all.after
 
 all.before :
-	$(MAKE) -C lib
+	$(MAKE) -C libitlssp
 all.after : $(FIRST_TARGET)
 
 all.targets : Release_target 
 
 clean :
-	$(MAKE) -C lib clean
+	$(MAKE) -C libitlssp clean
 	rm -fv $(clean.OBJ)
 	rm -fv $(DEP_FILES)
 
@@ -57,8 +57,8 @@ Release_target : Release_target.before $(Release_target.BIN) Release_target.afte
 Release_target : CFLAGS += -g -O0
 Release_target : INCLUDES += 
 Release_target : RCFLAGS += 
-Release_target : LDFLAGS += -s   
-Release_target : T_LDLIBS = ./lib/bin/libitlssp.a 
+Release_target : LDFLAGS += -s
+Release_target : T_LDLIBS = ./libitlssp/bin/libitlssp.a 
 ifdef LMAKE
 Release_target : CFLAGS -= -g -pipe
 endif

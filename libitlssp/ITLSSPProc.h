@@ -1,8 +1,9 @@
+
 #define CCONV _stdcall
 #define NOMANGLE
 
-#include "../SSPComs.h"
-#include "../itl_types.h"
+#include "../libitlssp/SSPComs.h"
+#include "../libitlssp/itl_types.h"
 #include <time.h>
 
 typedef enum{

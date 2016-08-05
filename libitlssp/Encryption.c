@@ -1,12 +1,14 @@
-#include "..//itl_types.h"
-#include <stdlib.h>
 #include "Encryption.h"
+
+#include <stdlib.h>
+
+#include "itl_types.h"
 
 
 /***************************************************************************
  * 2. DEFINES                                                              *
  ***************************************************************************/
-// concatenates 4 × 8-bit words (= 1 byte) to one 32-bit word
+// concatenates 4 * 8-bit words (= 1 byte) to one 32-bit word
 #define CONCAT_4_BYTES( w32, w8, w8_i)           \
 {                                                \
   (w32) = ( (UINT32) (w8)[(w8_i)    ] << 24 ) |  \
@@ -16,7 +18,7 @@
 }
 
 
-// splits a 32-bit word into 4 × 8-bit words (= 1 byte)
+// splits a 32-bit word into 4 * 8-bit words (= 1 byte)
 #define SPLIT_INTO_4_BYTES( w32, w8, w8_i)       \
 {                                                \
   (w8)[(w8_i)    ] = (UINT8) ( (w32) >> 24 );    \

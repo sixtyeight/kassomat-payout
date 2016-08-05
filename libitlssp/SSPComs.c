@@ -1,11 +1,13 @@
 
+#include "../libitlssp/SSPComs.h"
+
 #include <sys/time.h>
 #include <time.h>
-#include "../SSPComs.h"
-#include "../ssp_defines.h"
-#include "Encryption.h"
-#include "serialfunc.h"
-#include "ITLSSPProc.h"
+
+#include "../libitlssp/Encryption.h"
+#include "../libitlssp/ITLSSPProc.h"
+#include "../libitlssp/serialfunc.h"
+#include "../libitlssp/ssp_defines.h"
 
 
 

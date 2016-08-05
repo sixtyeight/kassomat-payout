@@ -1,10 +1,10 @@
-#include "../ssp_commands.h"
+#include "../libitlssp/ssp_commands.h"
 
 #ifdef WIN32
-#include "port_win32.h"
-#include "port_win32_ssp.h"
+#include "../libitlssp/port_win32.h"
+#include "../libitlssp/port_win32_ssp.h"
 #else
-#include "../SSPComs.h"
+#include "../libitlssp/SSPComs.h"
 #endif
 
 static SSP_RESPONSE_ENUM _ssp_return_values(SSP_COMMAND * sspC) {
