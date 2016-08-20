@@ -2078,8 +2078,8 @@ SSP_RESPONSE_ENUM mc_ssp_get_all_levels(SSP_COMMAND *sspC, char **json) {
 	// extract the device response code
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
-	/* The first data byte oin the response is the number of counters returned. Each counter consists of 9 bytes of
-	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ascii country
+	/* The first data byte in the response is the number of counters returned. Each counter consists of 9 bytes of
+	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ASCII country
 	 * code.
 	 */
 
