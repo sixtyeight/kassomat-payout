@@ -1333,9 +1333,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
  */
 void hopperEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
-
-	int i;
-	for (i = 0; i < poll->event_count; ++i) {
+	for (unsigned char i = 0; i < poll->event_count; ++i) {
 		switch (poll->events[i].event) {
 		case SSP_POLL_RESET:
 			publishHopperEvent("{\"event\":\"unit reset\"}");
@@ -1454,8 +1452,7 @@ void hopperEventHandler(struct m_device *device,
  */
 void validatorEventHandler(struct m_device *device,
 		struct m_metacash *metacash, SSP_POLL_DATA6 *poll) {
-
-	for (int i = 0; i < poll->event_count; ++i) {
+	for (unsigned char i = 0; i < poll->event_count; ++i) {
 		switch (poll->events[i].event) {
 		case SSP_POLL_RESET:
 			publishValidatorEvent("{\"event\":\"unit reset\"}");
@@ -1655,8 +1652,7 @@ void setup(struct m_metacash *metacash) {
 
 		{
 			// SMART Hopper configuration
-			int i;
-			for (i = 0; i < metacash->hopper.sspSetupReq.NumberOfChannels; i++) {
+			for (unsigned int i = 0; i < metacash->hopper.sspSetupReq.NumberOfChannels; i++) {
 				ssp6_set_coinmech_inhibits(&metacash->hopper.sspC,
 						metacash->hopper.sspSetupReq.ChannelData[i].value,
 						metacash->hopper.sspSetupReq.ChannelData[i].cc, ENABLED);
@@ -1811,8 +1807,6 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
 	SSP6_SETUP_REQUEST_DATA *sspSetupReq = &device->sspSetupReq;
-	unsigned int i = 0;
-
 	printf("initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
 
 	//check device is present
@@ -1843,7 +1837,7 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 	}
 
 	printf("channels:\n");
-	for (i = 0; i < sspSetupReq->NumberOfChannels; i++) {
+	for (unsigned int i = 0; i < sspSetupReq->NumberOfChannels; i++) {
 		printf("channel %d: %d %s\n", i + 1, sspSetupReq->ChannelData[i].value,
 				sspSetupReq->ChannelData[i].cc);
 	}
