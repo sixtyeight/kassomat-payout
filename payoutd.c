@@ -1321,6 +1321,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 			}
 			return 1;
 		default:
+			fprintf(stderr, "Unknown argument: %c", c);
 			return 1;
 		}
 	}
