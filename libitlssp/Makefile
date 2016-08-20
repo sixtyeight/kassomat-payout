@@ -59,13 +59,13 @@ DEP_FILES += Encryption.d ITLSSPProc.d Random.d SSPComs.d serialfunc.d
 clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ) $(Release_target.LIB)
 
 Release_target : Release_target.before $(Release_target.BIN) $(Release_target.LIB) Release_target.after_always
-Release_target : CFLAGS += -O3 -fPIC
+Release_target : CFLAGS += -O0 -fPIC
 Release_target : INCLUDES +=
 Release_target : RCFLAGS +=
 Release_target : LDFLAGS += $(CREATE_DEF)
 Release_target : T_LDLIBS =
 ifdef LMAKE
-Release_target : CFLAGS -= -O3 -g -pipe
+Release_target : CFLAGS -= -O0 -g -pipe
 endif
 
 Release_target.before :
