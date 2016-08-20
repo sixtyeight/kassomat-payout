@@ -49,11 +49,11 @@ char *toString(SB *sb) {
 	if (!sb || !sb->count)
 		return ""; /* TODO: Decide if error message or other action is preferable */
 	int len = 0;
-	for (int i = 0; i < sb->count; ++i)
+	for (size_t i = 0; i < sb->count; ++i)
 		len += strlen(sb->ptrList[i]);
 	size_t nBytes = (len + 1) * sizeof(char); /* 1 is for '\0' null terminator */
 	char *ret = (char *) getMem(nBytes);
-	for (int i = 0; i < sb->count; ++i)
+	for (size_t i = 0; i < sb->count; ++i)
 		strcat(ret, sb->ptrList[i]);
 	return ret;
 }
@@ -66,7 +66,7 @@ void dispose(SB **sb) {
 		return; /* TODO: Decide if should abort here or take other action */
 
 	// free all the strings allocated in append
-	for (int i = 0; i < (*sb)->count; ++i)
+	for (size_t i = 0; i < (*sb)->count; ++i)
 		free((*sb)->ptrList[i]);
 
 	free((*sb)->ptrList);
