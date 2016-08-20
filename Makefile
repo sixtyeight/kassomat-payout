@@ -54,7 +54,7 @@ DEP_FILES += payoutd.d
 clean.OBJ += $(Release_target.BIN) $(Release_target.OBJ)
 
 Release_target : Release_target.before $(Release_target.BIN) Release_target.after_always
-Release_target : CFLAGS += -g -O0
+Release_target : CFLAGS += -pedantic -pedantic-errors -g -O0
 Release_target : INCLUDES += 
 Release_target : RCFLAGS += 
 Release_target : LDFLAGS += -s

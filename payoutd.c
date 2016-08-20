@@ -18,6 +18,8 @@
  *  - on startup/exiting of the daemon started/exiting messages are published to the 'payout-event' topic
  */
 
+#define _GNU_SOURCE
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
