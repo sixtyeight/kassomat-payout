@@ -11,7 +11,7 @@ CFLAGS_C = $(filter-out -include "sdk.h",$(CFLAGS))
 
 CFLAGS = -Wall -g -O0
 INCLUDES = 
-LDFLAGS = -s
+LDFLAGS = 
 RCFLAGS = 
 \LDLIBS = $(T_LDLIBS)  -lstdc++ -lpthread
 LDLIBS = $(T_LDLIBS)  -lpthread -lhiredis -levent -luuid -ljansson
@@ -57,7 +57,7 @@ Release_target : Release_target.before $(Release_target.BIN) Release_target.afte
 Release_target : CFLAGS += -pedantic -pedantic-errors -g -O0
 Release_target : INCLUDES += 
 Release_target : RCFLAGS += 
-Release_target : LDFLAGS += -s
+Release_target : LDFLAGS += 
 Release_target : T_LDLIBS = ./libitlssp/bin/libitlssp.a 
 ifdef LMAKE
 Release_target : CFLAGS -= -g -pipe

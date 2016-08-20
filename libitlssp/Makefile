@@ -15,7 +15,7 @@ CFLAGS_C = $(filter-out -include "sdk.h",$(CFLAGS))
 
 CFLAGS = -Wall
 INCLUDES =
-LDFLAGS =  -s
+LDFLAGS = 
 RCFLAGS =
 LDLIBS = $(T_LDLIBS)  -lpthread
 #LDLIBS = $(T_LDLIBS)  -lstdc++ -lpthread
@@ -62,7 +62,7 @@ Release_target : Release_target.before $(Release_target.BIN) $(Release_target.LI
 Release_target : CFLAGS += -O3 -fPIC
 Release_target : INCLUDES +=
 Release_target : RCFLAGS +=
-Release_target : LDFLAGS += -s   $(CREATE_DEF)
+Release_target : LDFLAGS += $(CREATE_DEF)
 Release_target : T_LDLIBS =
 ifdef LMAKE
 Release_target : CFLAGS -= -O3 -g -pipe
