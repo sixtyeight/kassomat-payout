@@ -38,8 +38,13 @@ all.after : $(FIRST_TARGET)
 
 all.targets : Release_target 
 
+doxygen :
+	rm -rf html/*
+	doxygen
+
 clean :
 	$(MAKE) -C libitlssp clean
+	rm -rf html/*
 	rm -fv $(clean.OBJ)
 	rm -fv $(DEP_FILES)
 
