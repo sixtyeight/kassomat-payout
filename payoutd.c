@@ -1353,6 +1353,9 @@ void hopperEventHandler(struct m_device *device,
 				publishHopperEvent("{\"event\":\"reading\"}");
 			}
 			break;
+		case SSP_POLL_TIMEOUT:
+			publishHopperEvent("{\"event\":\"timeout\",\"amount\":%ld,\"cc\":\"%s\"}", poll->events[i].data1, poll->events[i].cc);
+			break;
 		case SSP_POLL_DISPENSING:
 			publishHopperEvent("{\"event\":\"dispensing\",\"amount\":%ld}", poll->events[i].data1);
 			break;
@@ -1484,6 +1487,9 @@ void validatorEventHandler(struct m_device *device,
 			break;
 		case SSP_POLL_SMART_EMPTYING:
 			publishValidatorEvent("{\"event\":\"smart emptying\"}");
+			break;
+		case SSP_POLL_TIMEOUT:
+			publishValidatorEvent("{\"event\":\"timeout\",\"amount\":%ld,\"cc\":\"%s\"}", poll->events[i].data1, poll->events[i].cc);
 			break;
 		case SSP_POLL_CREDIT:
 			// The note which was in escrow has been accepted
