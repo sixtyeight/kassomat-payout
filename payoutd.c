@@ -1859,7 +1859,7 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		return;
 	}
 
-	syslog(LOG_ERR, "device has been successfully initialized\n");
+	syslog(LOG_INFO, "device has been successfully initialized\n");
 }
 
 /**
