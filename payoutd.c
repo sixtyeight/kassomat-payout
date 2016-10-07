@@ -1222,7 +1222,7 @@ int main(int argc, char *argv[]) {
 	// setup logging via syslog
 	setlogmask(LOG_UPTO(LOG_INFO));
 	openlog("payoutd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-	syslog(LOG_INFO, "Program started by User %d", getuid());
+	syslog(LOG_NOTICE, "Program started by User %d", getuid());
 
 	// register interrupt handler for signals
 	signal(SIGTERM, signalHandler);
@@ -1251,7 +1251,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	syslog(LOG_INFO, "using redis at %s:%d and hardware device %s",
+	syslog(LOG_NOTICE, "using redis at %s:%d and hardware device %s",
 			metacash.redisHost, metacash.redisPort, metacash.serialDevice);
 
 	// open the serial device
@@ -1264,7 +1264,7 @@ int main(int argc, char *argv[]) {
 	// setup the ssp commands, configure and initialize the hardware
 	setup(&metacash);
 
-	syslog(LOG_INFO, "metacash open for business :D");
+	syslog(LOG_NOTICE, "metacash open for business :D");
 
 	publishPayoutEvent("{ \"event\":\"started\" }");
 
@@ -1272,7 +1272,7 @@ int main(int argc, char *argv[]) {
 
 	publishPayoutEvent("{ \"event\":\"exiting\" }");
 
-	syslog(LOG_INFO, "exiting");
+	syslog(LOG_NOTICE, "exiting");
 
 	if (metacash.deviceAvailable) {
 		mcSspCloseSerialDevice(&metacash);
