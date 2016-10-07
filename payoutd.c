@@ -237,9 +237,9 @@ redisAsyncContext* connectRedis(struct m_metacash *metacash) {
 
 	if (conn == NULL || conn->err) {
 		if (conn) {
-			fprintf(stderr, "fatal: Connection error: %s\n", conn->errstr);
+			syslog(LOG_ERR,  "fatal: Connection error: %s\n", conn->errstr);
 		} else {
-			fprintf(stderr,
+			syslog(LOG_ERR,
 					"fatal: Connection error: can't allocate redis context\n");
 		}
 	} else {
@@ -576,7 +576,7 @@ void handleFloat(struct m_command *cmd) {
  * \brief Print inhibits debug output.
  */
 void dbgDisplayInhibits(unsigned char inhibits) {
-	printf("dbgDisplayInhibits: inhibits are: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
+	syslog(LOG_DEBUG, "dbgDisplayInhibits: inhibits are: 0=%d 1=%d 2=%d 3=%d 4=%d 5=%d 6=%d 7=%d\n",
 			(inhibits >> 0) & 1,
 			(inhibits >> 1) & 1,
 			(inhibits >> 2) & 1,
@@ -637,7 +637,7 @@ void handleEnableChannels(struct m_command *cmd) {
 		cmd->device->channelInhibits = currentChannelInhibits;
 
 		if(0) {
-			printf("enable-channels:\n");
+			syslog(LOG_DEBUG, "enable-channels:\n");
 			dbgDisplayInhibits(currentChannelInhibits);
 		}
 	}
@@ -695,7 +695,7 @@ void handleDisableChannels(struct m_command *cmd) {
 		cmd->device->channelInhibits = currentChannelInhibits;
 
 		if(0) {
-			printf("disable-channels:\n");
+			syslog(LOG_DEBUG, "disable-channels:\n");
 			dbgDisplayInhibits(currentChannelInhibits);
 		}
 	}
@@ -1044,7 +1044,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 				cmd.device = &m->hopper;
 				cmd.responseTopic = "hopper-response";
 			} else {
-				printf("error: cbOnRequestMessage subscribed for a topic we don't have a response topic\n");
+				syslog(LOG_ERR, "cbOnRequestMessage subscribed for a topic we don't have a response topic\n");
 				return;
 			}
 
@@ -1096,7 +1096,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// function if any. in case we don't know that command we respond with a
 			// generic error response.
 
-			printf("processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
+			syslog(LOG_NOTICE, "processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
 					cmd.command, cmd.correlId, topic, cmd.device->name);
 
 			if(isCommand(&cmd, "quit")) {
@@ -1108,7 +1108,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 
 				if(! m->deviceAvailable) {
 					// TODO: an unknown command without the actual hardware will also receive this response :-/
-					printf("rejecting cmd='%s' from msgId='%s', hardware unavailable!\n", cmd.command, cmd.correlId);
+					syslog(LOG_WARNING, "rejecting cmd='%s' from msgId='%s', hardware unavailable!\n", cmd.command, cmd.correlId);
 					replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"hardware unavailable\"}", cmd.correlId);
 				} else {
 					if(isCommand(&cmd, "configure-bezel")) {
@@ -1162,10 +1162,10 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
  */
 void cbOnConnectPublishContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbOnConnectPublishContext: redis error: %s\n", c->errstr);
+		syslog(LOG_ERR, "cbOnConnectPublishContext: redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbOnConnectPublishContext: connected to redis\n");
+	syslog(LOG_NOTICE, "cbOnConnectPublishContext: connected to redis\n");
 }
 
 /**
@@ -1174,10 +1174,10 @@ void cbOnConnectPublishContext(const redisAsyncContext *c, int status) {
  */
 void cbOnDisconnectPublishContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbOnDisconnectPublishContext: redis error: %s\n", c->errstr);
+		syslog(LOG_ERR, "cbOnDisconnectPublishContext: redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbOnDisconnectPublishContext: disconnected from redis\n");
+	syslog(LOG_NOTICE, "cbOnDisconnectPublishContext: disconnected from redis\n");
 }
 
 /**
@@ -1186,10 +1186,10 @@ void cbOnDisconnectPublishContext(const redisAsyncContext *c, int status) {
  */
 void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbOnConnectSubscribeContext - redis error: %s\n", c->errstr);
+		syslog(LOG_ERR, "cbOnConnectSubscribeContext - redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbOnConnectSubscribeContext - connected to redis\n");
+	syslog(LOG_NOTICE, "cbOnConnectSubscribeContext - connected to redis\n");
 
 	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier \"const\" warning
 
@@ -1207,10 +1207,10 @@ void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
  */
 void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		fprintf(stderr, "cbOnDisconnectSubscribeContext - redis error: %s\n", c->errstr);
+		syslog(LOG_NOTICE, "cbOnDisconnectSubscribeContext - redis error: %s\n", c->errstr);
 		return;
 	}
-	fprintf(stderr, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
+	syslog(LOG_NOTICE, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
 }
 
 /**
@@ -1313,15 +1313,15 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 			break;
 		case '?':
 			if (optopt == 'h' || optopt == 'p' || optopt == 'd') {
-				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+				syslog(LOG_ERR, "Option -%c requires an argument.\n", optopt);
 			} else if (isprint(optopt)) {
-				fprintf(stderr, "Unknown option '-%c'.\n", optopt);
+				syslog(LOG_ERR, "Unknown option '-%c'.\n", optopt);
 			} else {
-				fprintf(stderr, "Unknown option character 'x%x'.\n", optopt);
+				syslog(LOG_ERR, "Unknown option character 'x%x'.\n", optopt);
 			}
 			return 1;
 		default:
-			fprintf(stderr, "Unknown argument: %c", c);
+			syslog(LOG_ERR, "Unknown argument: %c", c);
 			return 1;
 		}
 	}
@@ -1340,7 +1340,7 @@ void hopperEventHandler(struct m_device *device,
 			publishHopperEvent("{\"event\":\"unit reset\"}");
 			// Make sure we are using ssp version 6
 			if (ssp6_host_protocol(&device->sspC, 0x06) != SSP_RESPONSE_OK) {
-				fprintf(stderr, "SSP Host Protocol Failed\n");
+				syslog(LOG_ERR, "SSP Host Protocol Failed\n");
 				exit(3);
 			}
 			break;
@@ -1462,7 +1462,7 @@ void validatorEventHandler(struct m_device *device,
 			publishValidatorEvent("{\"event\":\"unit reset\"}");
 			// Make sure we are using ssp version 6
 			if (ssp6_host_protocol(&device->sspC, 0x06) != SSP_RESPONSE_OK) {
-				fprintf(stderr, "SSP Host Protocol Failed\n");
+				syslog(LOG_ERR, "SSP Host Protocol Failed\n");
 				exit(3);
 			}
 			break;
@@ -1627,7 +1627,7 @@ void setup(struct m_metacash *metacash) {
 		redisAsyncSetConnectCallback(redisSubscribeCtx, cbOnConnectSubscribeContext);
 		redisAsyncSetDisconnectCallback(redisSubscribeCtx, cbOnDisconnectSubscribeContext);
 	} else {
-		printf("fatal: could not establish connection to redis.\n");
+		syslog(LOG_ERR, "could not establish connection to redis.");
 		exit(1);
 	}
 
@@ -1649,13 +1649,10 @@ void setup(struct m_metacash *metacash) {
 		mcSspSetupCommand(&metacash->hopper.sspC, metacash->hopper.id);
 
 		// initialize the devices
-		printf("\n");
 		mcSspInitializeDevice(&metacash->validator.sspC,
 				metacash->validator.key, &metacash->validator);
-		printf("\n");
 		mcSspInitializeDevice(&metacash->hopper.sspC, metacash->hopper.key,
 				&metacash->hopper);
-		printf("\n");
 
 		{
 			// SMART Hopper configuration
@@ -1674,7 +1671,7 @@ void setup(struct m_metacash *metacash) {
 			// to the cashbox of the validator from which no payout can be done.
 			if (mc_ssp_set_refill_mode(&metacash->validator.sspC)
 					!= SSP_RESPONSE_OK) {
-				printf("ERROR: setting refill mode failed\n");
+				syslog(LOG_WARNING, "setting refill mode failed");
 			}
 
 			// setup the routing of the banknotes in the validator (amounts are in cent)
@@ -1698,7 +1695,7 @@ void setup(struct m_metacash *metacash) {
 			// set the inhibits in the hardware
 			if (ssp6_set_inhibits(&metacash->validator.sspC, metacash->validator.channelInhibits, 0x0)
 					!= SSP_RESPONSE_OK) {
-				printf("ERROR: Inhibits Failed\n");
+				syslog(LOG_ERR, "Inhibits Failed\n");
 				return;
 			}
 
@@ -1706,12 +1703,12 @@ void setup(struct m_metacash *metacash) {
 			if (ssp6_enable_payout(&metacash->validator.sspC,
 					metacash->validator.sspSetupReq.UnitType)
 					!= SSP_RESPONSE_OK) {
-				printf("ERROR: Enable Payout Failed\n");
+				syslog(LOG_ERR, "Enable Payout Failed\n");
 				return;
 			}
 		}
 
-		printf("setup finished successfully\n");
+		syslog(LOG_INFO, "setup finished successfully\n");
 	}
 
 	// setup libevent triggered polling of the hardware (every second more or less)
@@ -1731,13 +1728,13 @@ void setup(struct m_metacash *metacash) {
  */
 int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	// open the serial device
-	printf("opening serial device: %s\n", metacash->serialDevice);
+	syslog(LOG_NOTICE, "opening serial device: %s\n", metacash->serialDevice);
 
 	{
 		struct stat buffer;
 		int fildes = open(metacash->serialDevice, O_RDWR);
 		if (fildes <= 0) {
-			printf("ERROR: opening device %s failed: %s\n", metacash->serialDevice, strerror(errno));
+			syslog(LOG_ERR, "opening device %s failed: %s\n", metacash->serialDevice, strerror(errno));
 			return 1;
 		}
 
@@ -1749,13 +1746,13 @@ int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 		case S_IFCHR:
 			break;
 		default:
-			printf("ERROR: %s is not a device\n", metacash->serialDevice);
+			syslog(LOG_ERR, "file %s is not a device\n", metacash->serialDevice);
 			return 1;
 		}
 	}
 
 	if (open_ssp_port(metacash->serialDevice) == 0) {
-		printf("ERROR: could not open serial device %s\n",
+		syslog(LOG_ERR, "could not open serial device %s\n",
 				metacash->serialDevice);
 		return 1;
 	}
@@ -1782,24 +1779,24 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 	if ((resp = ssp6_poll(&device->sspC, &poll)) != SSP_RESPONSE_OK) {
 		if (resp == SSP_RESPONSE_TIMEOUT) {
 			// If the poll timed out, then give up
-			printf("SSP Poll Timeout\n");
+			syslog(LOG_WARNING, "SSP Poll Timeout\n");
 			return;
 		} else {
 			if (resp == SSP_RESPONSE_KEY_NOT_SET) {
 				// The unit has responded with key not set, so we should try to negotiate one
 				if (ssp6_setup_encryption(&device->sspC, device->key)
 						!= SSP_RESPONSE_OK) {
-					printf("Encryption Failed\n");
+					syslog(LOG_ERR, "Encryption Failed\n");
 				} else {
-					printf("Encryption Setup\n");
+					syslog(LOG_INFO, "Encryption Setup\n");
 				}
 			} else {
-				printf("SSP Poll Error: 0x%x\n", resp);
+				syslog(LOG_ERR, "SSP Poll Error: 0x%x\n", resp);
 			}
 		}
 	} else {
 		if (poll.event_count > 0) {
-			printf("parsing poll response from \"%s\" now (%d events)\n",
+			syslog(LOG_INFO, "parsing poll response from \"%s\" now (%d events)\n",
 					device->name, poll.event_count);
 			device->eventHandlerFn(device, metacash, &poll);
 		} else {
@@ -1814,55 +1811,55 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
 	SSP6_SETUP_REQUEST_DATA *sspSetupReq = &device->sspSetupReq;
-	printf("initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
+	syslog(LOG_INFO, "initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
 
 	//check device is present
 	if (ssp6_sync(sspC) != SSP_RESPONSE_OK) {
-		printf("ERROR: No device found\n");
+		syslog(LOG_ERR, "No device found\n");
 		return;
 	}
-	printf("device found\n");
+	syslog(LOG_INFO, "device found\n");
 
 	//try to setup encryption using the default key
 	if (ssp6_setup_encryption(sspC, key) != SSP_RESPONSE_OK) {
-		printf("ERROR: Encryption failed\n");
+		syslog(LOG_ERR, "Encryption failed\n");
 		return;
 	}
-	printf("encryption setup\n");
+	syslog(LOG_INFO, "encryption setup\n");
 
 	// Make sure we are using ssp version 6
 	if (ssp6_host_protocol(sspC, 0x06) != SSP_RESPONSE_OK) {
-		printf("ERROR: Host Protocol Failed\n");
+		syslog(LOG_ERR, "Host Protocol Failed\n");
 		return;
 	}
-	printf("host protocol verified\n");
+	syslog(LOG_INFO, "host protocol verified\n");
 
 	// Collect some information about the device
 	if (ssp6_setup_request(sspC, sspSetupReq) != SSP_RESPONSE_OK) {
-		printf("ERROR: Setup Request Failed\n");
+		syslog(LOG_ERR, "Setup Request Failed\n");
 		return;
 	}
 
-	printf("channels:\n");
+	syslog(LOG_INFO, "channels:\n");
 	for (unsigned int i = 0; i < sspSetupReq->NumberOfChannels; i++) {
-		printf("channel %d: %d %s\n", i + 1, sspSetupReq->ChannelData[i].value,
+		syslog(LOG_INFO, "channel %d: %d %s\n", i + 1, sspSetupReq->ChannelData[i].value,
 				sspSetupReq->ChannelData[i].cc);
 	}
 
 	char version[100];
 	mc_ssp_get_firmware_version(sspC, &version[0]);
-	printf("full firmware version: %s\n", version);
+	syslog(LOG_INFO, "full firmware version: %s\n", version);
 
 	mc_ssp_get_dataset_version(sspC, &version[0]);
-	printf("full dataset version : %s\n", version);
+	syslog(LOG_INFO, "full dataset version : %s\n", version);
 
 	//enable the device
 	if (ssp6_enable(sspC) != SSP_RESPONSE_OK) {
-		printf("ERROR: Enable Failed\n");
+		syslog(LOG_ERR, "Enable Failed\n");
 		return;
 	}
 
-	printf("device has been successfully initialized\n");
+	syslog(LOG_ERR, "device has been successfully initialized\n");
 }
 
 /**
@@ -2253,10 +2250,10 @@ SSP_RESPONSE_ENUM mc_ssp_channel_security_data(SSP_COMMAND *sspC) {
 	if(resp == SSP_RESPONSE_OK) {
 		int numChannels = sspC->ResponseData[1];
 
-		printf("security status: numChannels=%d\n", numChannels);
-		printf("0 = unused, 1 = low, 2 = std, 3 = high, 4 = inhibited\n");
+		syslog(LOG_DEBUG, "security status: numChannels=%d\n", numChannels);
+		syslog(LOG_DEBUG, "0 = unused, 1 = low, 2 = std, 3 = high, 4 = inhibited\n");
 		for(int i = 0; i < numChannels; i++) {
-			printf("security status: channel %d -> %d\n", 1 + i, sspC->ResponseData[2 + i]);
+			syslog(LOG_DEBUG, "security status: channel %d -> %d\n", 1 + i, sspC->ResponseData[2 + i]);
 		}
 	}
 
