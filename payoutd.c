@@ -271,7 +271,7 @@ void cbOnPollEvent(int fd, short event, void *privdata) {
  */
 void cbOnCheckQuitEvent(int fd, short event, void *privdata) {
 	if (receivedSignal != 0) {
-		syslog(LOG_INFO, "received signal. going to exit event loop.");
+		syslog(LOG_NOTICE, "received signal or quit cmd. going to exit event loop.");
 
 		struct m_metacash *metacash = privdata;
 		event_base_loopexit(metacash->eventBase, NULL);
@@ -1213,6 +1213,12 @@ void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	syslog(LOG_INFO, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
 }
 
+void die(char *reason, int rc) {
+	syslog(LOG_EMERG, "fatal error occured: %s, rc=%d", reason, rc);
+	syslog(LOG_EMERG, "exiting NOW");
+	exit(rc);
+}
+
 /**
  * \brief Supports arguments -h (redis hostname), -p (redis port), -d (serial device name) and -?.
  * \details Warning: both "calls" to hopperEventHandler() and validatorEventHandler() in the callgraph are false positives!
@@ -1248,7 +1254,8 @@ int main(int argc, char *argv[]) {
 
 	// parse the command line arguments
 	if (parseCmdLine(argc, argv, &metacash)) {
-		return 1;
+		die("invalid command line", 1);
+		// never reached, already exited
 	}
 
 	syslog(LOG_NOTICE, "using redis at %s:%d and hardware device %s",
@@ -1264,7 +1271,7 @@ int main(int argc, char *argv[]) {
 	// setup the ssp commands, configure and initialize the hardware
 	setup(&metacash);
 
-	syslog(LOG_NOTICE, "metacash open for business :D");
+	syslog(LOG_NOTICE, "open for business :D");
 
 	publishPayoutEvent("{ \"event\":\"started\" }");
 
@@ -1272,7 +1279,7 @@ int main(int argc, char *argv[]) {
 
 	publishPayoutEvent("{ \"event\":\"exiting\" }");
 
-	syslog(LOG_NOTICE, "exiting");
+	syslog(LOG_NOTICE, "shutting down");
 
 	if (metacash.deviceAvailable) {
 		mcSspCloseSerialDevice(&metacash);
@@ -1288,6 +1295,7 @@ int main(int argc, char *argv[]) {
 	event_base_free(metacash.eventBase);
 
 	// syslog
+	syslog(LOG_NOTICE, "exiting NOW");
 	closelog();
 
 	return 0;
@@ -1340,8 +1348,8 @@ void hopperEventHandler(struct m_device *device,
 			publishHopperEvent("{\"event\":\"unit reset\"}");
 			// Make sure we are using ssp version 6
 			if (ssp6_host_protocol(&device->sspC, 0x06) != SSP_RESPONSE_OK) {
-				syslog(LOG_ERR, "SSP Host Protocol Failed\n");
-				exit(3);
+				die("hopperEventHandler: SSP Host Protocol Failed", 3);
+				// never reached, already exited
 			}
 			break;
 		case SSP_POLL_READ:
@@ -1462,8 +1470,8 @@ void validatorEventHandler(struct m_device *device,
 			publishValidatorEvent("{\"event\":\"unit reset\"}");
 			// Make sure we are using ssp version 6
 			if (ssp6_host_protocol(&device->sspC, 0x06) != SSP_RESPONSE_OK) {
-				syslog(LOG_ERR, "SSP Host Protocol Failed\n");
-				exit(3);
+				die("validatorEventHandler: SSP Host Protocol Failed", 3);
+				// never reached, already exited
 			}
 			break;
 		case SSP_POLL_READ:
@@ -1627,8 +1635,8 @@ void setup(struct m_metacash *metacash) {
 		redisAsyncSetConnectCallback(redisSubscribeCtx, cbOnConnectSubscribeContext);
 		redisAsyncSetDisconnectCallback(redisSubscribeCtx, cbOnDisconnectSubscribeContext);
 	} else {
-		syslog(LOG_ERR, "could not establish connection to redis.");
-		exit(1);
+		die("could not establish connection to redis", 1);
+		// never reached, already exited
 	}
 
 	// setup libevent triggered check if we should quit (every 500ms more or less)
