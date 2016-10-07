@@ -271,7 +271,7 @@ void cbOnPollEvent(int fd, short event, void *privdata) {
  */
 void cbOnCheckQuitEvent(int fd, short event, void *privdata) {
 	if (receivedSignal != 0) {
-		syslog(LOG_NOTICE, "received signal. going to exit event loop.");
+		syslog(LOG_INFO, "received signal. going to exit event loop.");
 
 		struct m_metacash *metacash = privdata;
 		event_base_loopexit(metacash->eventBase, NULL);
@@ -1096,7 +1096,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// function if any. in case we don't know that command we respond with a
 			// generic error response.
 
-			syslog(LOG_NOTICE, "processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
+			syslog(LOG_INFO, "processing cmd='%s' from msgId='%s' in topic='%s' for device='%s'\n",
 					cmd.command, cmd.correlId, topic, cmd.device->name);
 
 			if(isCommand(&cmd, "quit")) {
@@ -1165,7 +1165,7 @@ void cbOnConnectPublishContext(const redisAsyncContext *c, int status) {
 		syslog(LOG_ERR, "cbOnConnectPublishContext: redis error: %s\n", c->errstr);
 		return;
 	}
-	syslog(LOG_NOTICE, "cbOnConnectPublishContext: connected to redis\n");
+	syslog(LOG_INFO, "cbOnConnectPublishContext: connected to redis\n");
 }
 
 /**
@@ -1177,7 +1177,7 @@ void cbOnDisconnectPublishContext(const redisAsyncContext *c, int status) {
 		syslog(LOG_ERR, "cbOnDisconnectPublishContext: redis error: %s\n", c->errstr);
 		return;
 	}
-	syslog(LOG_NOTICE, "cbOnDisconnectPublishContext: disconnected from redis\n");
+	syslog(LOG_INFO, "cbOnDisconnectPublishContext: disconnected from redis\n");
 }
 
 /**
@@ -1189,7 +1189,7 @@ void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
 		syslog(LOG_ERR, "cbOnConnectSubscribeContext - redis error: %s\n", c->errstr);
 		return;
 	}
-	syslog(LOG_NOTICE, "cbOnConnectSubscribeContext - connected to redis\n");
+	syslog(LOG_INFO, "cbOnConnectSubscribeContext - connected to redis\n");
 
 	redisAsyncContext *cNotConst = (redisAsyncContext*) c; // get rids of discarding qualifier \"const\" warning
 
@@ -1207,10 +1207,10 @@ void cbOnConnectSubscribeContext(const redisAsyncContext *c, int status) {
  */
 void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	if (status != REDIS_OK) {
-		syslog(LOG_NOTICE, "cbOnDisconnectSubscribeContext - redis error: %s\n", c->errstr);
+		syslog(LOG_INFO, "cbOnDisconnectSubscribeContext - redis error: %s\n", c->errstr);
 		return;
 	}
-	syslog(LOG_NOTICE, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
+	syslog(LOG_INFO, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
 }
 
 /**
@@ -1220,9 +1220,9 @@ void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
  */
 int main(int argc, char *argv[]) {
 	// setup logging via syslog
-	setlogmask(LOG_UPTO(LOG_NOTICE));
+	setlogmask(LOG_UPTO(LOG_INFO));
 	openlog("payoutd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-	syslog(LOG_NOTICE, "Program started by User %d", getuid());
+	syslog(LOG_INFO, "Program started by User %d", getuid());
 
 	// register interrupt handler for signals
 	signal(SIGTERM, signalHandler);
@@ -1251,7 +1251,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	syslog(LOG_NOTICE, "using redis at %s:%d and hardware device %s",
+	syslog(LOG_INFO, "using redis at %s:%d and hardware device %s",
 			metacash.redisHost, metacash.redisPort, metacash.serialDevice);
 
 	// open the serial device
@@ -1264,7 +1264,7 @@ int main(int argc, char *argv[]) {
 	// setup the ssp commands, configure and initialize the hardware
 	setup(&metacash);
 
-	syslog(LOG_NOTICE, "metacash open for business :D");
+	syslog(LOG_INFO, "metacash open for business :D");
 
 	publishPayoutEvent("{ \"event\":\"started\" }");
 
@@ -1272,7 +1272,7 @@ int main(int argc, char *argv[]) {
 
 	publishPayoutEvent("{ \"event\":\"exiting\" }");
 
-	syslog(LOG_NOTICE, "exiting");
+	syslog(LOG_INFO, "exiting");
 
 	if (metacash.deviceAvailable) {
 		mcSspCloseSerialDevice(&metacash);
@@ -1728,7 +1728,7 @@ void setup(struct m_metacash *metacash) {
  */
 int mcSspOpenSerialDevice(struct m_metacash *metacash) {
 	// open the serial device
-	syslog(LOG_NOTICE, "opening serial device: %s\n", metacash->serialDevice);
+	syslog(LOG_INFO, "opening serial device: %s\n", metacash->serialDevice);
 
 	{
 		struct stat buffer;
