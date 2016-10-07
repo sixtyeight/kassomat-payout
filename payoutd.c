@@ -1819,7 +1819,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash) {
 void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		struct m_device *device) {
 	SSP6_SETUP_REQUEST_DATA *sspSetupReq = &device->sspSetupReq;
-	syslog(LOG_INFO, "initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
+	syslog(LOG_NOTICE, "initializing device (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
 
 	//check device is present
 	if (ssp6_sync(sspC) != SSP_RESPONSE_OK) {
@@ -1867,7 +1867,7 @@ void mcSspInitializeDevice(SSP_COMMAND *sspC, unsigned long long key,
 		return;
 	}
 
-	syslog(LOG_INFO, "device has been successfully initialized\n");
+	syslog(LOG_NOTICE, "device has been successfully initialized (id=0x%02X, '%s')\n", sspC->SSPAddress, device->name);
 }
 
 /**
