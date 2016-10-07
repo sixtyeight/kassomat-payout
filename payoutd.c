@@ -1062,6 +1062,8 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			cmd.jsonMessage = json_loads(message, 0, &error);
 
 			if(! cmd.jsonMessage) {
+				syslog(LOG_WARNING, "unable to process message: could not parse json. reason: %s, line: %d",
+						error.text, error.line);
 				replyWith(cmd.responseTopic,
 						"{\"error\":\"could not parse json\",\"reason\":\"%s\",\"line\":%d}",
 						error.text, error.line);
@@ -1073,6 +1075,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// this will be the 'correlId' used in replies.
 			json_t *jMsgId = json_object_get(cmd.jsonMessage, "msgId");
 			if(! json_is_string(jMsgId)) {
+				syslog(LOG_WARNING, "unable to process message: property 'msgId' missing or invalid");
 				replyWithPropertyError(&cmd, "msgId");
 				json_decref(cmd.jsonMessage);
 				return;
@@ -1083,6 +1086,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 			// extract the 'cmd' property
 			json_t *jCmd = json_object_get(cmd.jsonMessage, "cmd");
 			if(! json_is_string(jCmd)) {
+				syslog(LOG_WARNING, "unable to process message: property 'cmd' missing or invalid");
 				replyWithPropertyError(&cmd, "cmd");
 				json_decref(cmd.jsonMessage);
 				return;
@@ -1144,6 +1148,7 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 					} else if (isCommand(&cmd, "last-reject-note")) {
 						handleLastRejectNote(&cmd);
 					} else {
+						syslog(LOG_WARNING, "unable to process message: no handler for cmd='%s' found", cmd.command);
 						replyWith(cmd.responseTopic, "{\"correlId\":\"%s\",\"error\":\"unknown command\",\"cmd\":\"%s\"}",
 								cmd.correlId, cmd.command);
 					}
