@@ -1685,6 +1685,13 @@ void setup(struct m_metacash *metacash) {
 				}
 			} else {
 				syslog(LOG_NOTICE, "coins will not be accepted");
+
+				// SMART Hopper configuration
+				for (unsigned int i = 0; i < metacash->hopper.sspSetupReq.NumberOfChannels; i++) {
+					ssp6_set_coinmech_inhibits(&metacash->hopper.sspC,
+							metacash->hopper.sspSetupReq.ChannelData[i].value,
+							metacash->hopper.sspSetupReq.ChannelData[i].cc, DISABLED);
+				}
 			}
 		}
 
