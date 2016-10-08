@@ -95,6 +95,8 @@ struct m_metacash {
 	int deviceAvailable;
 	/** \brief The name of the device we should use to connect to the ITL hardware */
 	char *serialDevice;
+	/** \brief Should the hardware accept coins at all (default off for now) */
+	int acceptCoins;
 
 	/** \brief The port of the redis server to which we connect */
 	int redisPort;
@@ -1243,6 +1245,7 @@ int main(int argc, char *argv[]) {
 	metacash.deviceAvailable = 0;
 	metacash.quit = 0;
 
+
 	metacash.serialDevice = "/dev/ttyACM0";	// default, override with -d argument
 	metacash.redisHost = "127.0.0.1";	// default, override with -h argument
 	metacash.redisPort = 6379;			// default, override with -p argument
@@ -1313,7 +1316,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "h:p:d:")) != -1) {
+	while ((c = getopt(argc, argv, "ch:p:d:")) != -1) {
 		switch (c) {
 		case 'h':
 			metacash->redisHost = optarg;
@@ -1323,6 +1326,9 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 			break;
 		case 'd':
 			metacash->serialDevice = optarg;
+			break;
+		case 'c':
+			metacash->acceptCoins = 1;
 			break;
 		case '?':
 			if (optopt == 'h' || optopt == 'p' || optopt == 'd') {
@@ -1668,11 +1674,17 @@ void setup(struct m_metacash *metacash) {
 				&metacash->hopper);
 
 		{
-			// SMART Hopper configuration
-			for (unsigned int i = 0; i < metacash->hopper.sspSetupReq.NumberOfChannels; i++) {
-				ssp6_set_coinmech_inhibits(&metacash->hopper.sspC,
-						metacash->hopper.sspSetupReq.ChannelData[i].value,
-						metacash->hopper.sspSetupReq.ChannelData[i].cc, ENABLED);
+			if(metacash->acceptCoins) {
+				syslog(LOG_WARNING, "coins will be accepted");
+
+				// SMART Hopper configuration
+				for (unsigned int i = 0; i < metacash->hopper.sspSetupReq.NumberOfChannels; i++) {
+					ssp6_set_coinmech_inhibits(&metacash->hopper.sspC,
+							metacash->hopper.sspSetupReq.ChannelData[i].value,
+							metacash->hopper.sspSetupReq.ChannelData[i].cc, ENABLED);
+				}
+			} else {
+				syslog(LOG_NOTICE, "coins will not be accepted");
 			}
 		}
 
