@@ -1244,7 +1244,7 @@ int main(int argc, char *argv[]) {
 	struct m_metacash metacash;
 	metacash.deviceAvailable = 0;
 	metacash.quit = 0;
-
+	metacash.acceptCoins = 0; // default, override using -c
 
 	metacash.serialDevice = "/dev/ttyACM0";	// default, override with -d argument
 	metacash.redisHost = "127.0.0.1";	// default, override with -h argument
