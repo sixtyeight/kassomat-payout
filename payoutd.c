@@ -1468,6 +1468,9 @@ void hopperEventHandler(struct m_device *device,
 			}
 			break;
 		default:
+			// fallback only. in case we got a message which is not handled above.
+			// if you can see this have a look in the SSP reference manual what
+			// the message is about.
 			publishHopperEvent("{\"event\":\"unknown\",\"id\":\"0x%02X\"}", poll->events[i].event);
 			break;
 		}
@@ -1623,6 +1626,9 @@ void validatorEventHandler(struct m_device *device,
 			}
 			break;
 		default:
+			// fallback only. in case we got a message which is not handled above.
+			// if you can see this have a look in the SSP reference manual what
+			// the message is about.
 			publishValidatorEvent("{\"event\":\"unknown\",\"id\":\"0x%02X\"}", poll->events[i].event);
 			break;
 		}
