@@ -1220,6 +1220,10 @@ void cbOnDisconnectSubscribeContext(const redisAsyncContext *c, int status) {
 	syslog(LOG_INFO, "cbOnDisconnectSubscribeContext - disconnected from redis\n");
 }
 
+/**
+ * \brief This function never returns, it displays the reason argument and return code
+ * in the syslog and exits immediately.
+ */
 void die(char *reason, int rc) {
 	syslog(LOG_EMERG, "fatal error occured: %s, rc=%d", reason, rc);
 	syslog(LOG_EMERG, "exiting NOW");
