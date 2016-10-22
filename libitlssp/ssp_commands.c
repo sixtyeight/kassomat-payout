@@ -7,7 +7,8 @@
 #include "../libitlssp/SSPComs.h"
 #endif
 
-static SSP_RESPONSE_ENUM _ssp_return_values(SSP_COMMAND * sspC) {
+static SSP_RESPONSE_ENUM _ssp_return_values(SSP_COMMAND * sspC)
+{
 	//CHECK FOR TIMEOUT
 	if (send_ssp_command(sspC) == 0)
 		return SSP_RESPONSE_TIMEOUT;
@@ -21,8 +22,8 @@ static SSP_RESPONSE_ENUM _ssp_return_values(SSP_COMMAND * sspC) {
  */
 
 // Send an SSP payout command (0x33)
-SSP_RESPONSE_ENUM ssp6_payout(SSP_COMMAND *sspC, const int value,
-		const char *cc, const char option) {
+SSP_RESPONSE_ENUM ssp6_payout(SSP_COMMAND * sspC, const int value, const char *cc, const char option)
+{
 	SSP_RESPONSE_ENUM resp;
 	int i;
 
@@ -42,8 +43,8 @@ SSP_RESPONSE_ENUM ssp6_payout(SSP_COMMAND *sspC, const int value,
 }
 
 // Send an SSP payout command (0x33)
-SSP_RESPONSE_ENUM ssp6_set_route(SSP_COMMAND *sspC, const int value,
-		const char *cc, const char route) {
+SSP_RESPONSE_ENUM ssp6_set_route(SSP_COMMAND * sspC, const int value, const char *cc, const char route)
+{
 	SSP_RESPONSE_ENUM resp;
 	int i;
 
@@ -62,7 +63,8 @@ SSP_RESPONSE_ENUM ssp6_set_route(SSP_COMMAND *sspC, const int value,
 }
 
 // Send an SSP sync (0x11)
-SSP_RESPONSE_ENUM ssp6_sync(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_sync(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -72,8 +74,8 @@ SSP_RESPONSE_ENUM ssp6_sync(SSP_COMMAND *sspC) {
 }
 
 // Setup SSP encryption, sends SSP commands set generator (0x4A), set modulus (0x4B) and exchange keys (0x4C)
-SSP_RESPONSE_ENUM ssp6_setup_encryption(SSP_COMMAND *sspC,
-		const unsigned long long fixedkey) {
+SSP_RESPONSE_ENUM ssp6_setup_encryption(SSP_COMMAND * sspC, const unsigned long long fixedkey)
+{
 	sspC->Key.FixedKey = fixedkey;
 	if (negotiate_ssp_encryption(sspC, &(sspC->Key)) == 0)
 		return SSP_RESPONSE_TIMEOUT;
@@ -82,8 +84,8 @@ SSP_RESPONSE_ENUM ssp6_setup_encryption(SSP_COMMAND *sspC,
 }
 
 // Send an SSP host protocol version (0x06)
-SSP_RESPONSE_ENUM ssp6_host_protocol(SSP_COMMAND *sspC,
-		const unsigned char host_protocol) {
+SSP_RESPONSE_ENUM ssp6_host_protocol(SSP_COMMAND * sspC, const unsigned char host_protocol)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 2;
@@ -94,8 +96,8 @@ SSP_RESPONSE_ENUM ssp6_host_protocol(SSP_COMMAND *sspC,
 }
 
 // Send an SSP setup request (0x05), and parse the response into an SSP6_SETUP_REQUEST_DATA
-SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
-		SSP6_SETUP_REQUEST_DATA *setup_request_data) {
+SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND * sspC, SSP6_SETUP_REQUEST_DATA * setup_request_data)
+{
 	SSP_RESPONSE_ENUM resp;
 	unsigned int i;
 	int offset;
@@ -116,9 +118,8 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 
 			// Extract the firmware version
 			for (i = 0; i < 4; ++i)
-				setup_request_data->FirmwareVersion[i] =
-						sspC->ResponseData[offset++];
-			setup_request_data->FirmwareVersion[i] = '\0'; //NULL TERMINATOR
+				setup_request_data->FirmwareVersion[i] = sspC->ResponseData[offset++];
+			setup_request_data->FirmwareVersion[i] = '\0';	//NULL TERMINATOR
 
 			// Country Code field is obsolete in SSPv6
 			offset += 3;
@@ -133,25 +134,23 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 				setup_request_data->ChannelData[i].value = 0;
 				for (j = 0; j < 2; j++)
 					setup_request_data->ChannelData[i].value +=
-							sspC->ResponseData[offset++] << (j * 8);
+					    sspC->ResponseData[offset++] << (j * 8);
 			}
 			// For each channel, extract the country code
 			for (i = 0; i < setup_request_data->NumberOfChannels; i++) {
 				int j;
 				for (j = 0; j < 3; j++)
-					setup_request_data->ChannelData[i].cc[j] =
-							sspC->ResponseData[offset++];
+					setup_request_data->ChannelData[i].cc[j] = sspC->ResponseData[offset++];
 
-				setup_request_data->ChannelData[i].cc[j] = '\0'; // NULL TERMINATOR
+				setup_request_data->ChannelData[i].cc[j] = '\0';	// NULL TERMINATOR
 			}
 
 		} else {
 
 			// Extract the firmware version
 			for (i = 0; i < 4; ++i)
-				setup_request_data->FirmwareVersion[i] =
-						sspC->ResponseData[offset++];
-			setup_request_data->FirmwareVersion[i] = '\0'; //NULL TERMINATOR
+				setup_request_data->FirmwareVersion[i] = sspC->ResponseData[offset++];
+			setup_request_data->FirmwareVersion[i] = '\0';	//NULL TERMINATOR
 
 			// Country Code field is obsolete in SSPv6
 			offset += 3;
@@ -162,19 +161,17 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 			setup_request_data->NumberOfChannels = sspC->ResponseData[offset++];
 
 			// The channel values can be ignoredhere
-			offset += setup_request_data->NumberOfChannels; // skip past channel values for ssp < v6
+			offset += setup_request_data->NumberOfChannels;	// skip past channel values for ssp < v6
 
 			for (i = 0; i < setup_request_data->NumberOfChannels; i++) {
-				setup_request_data->ChannelData[i].security =
-						sspC->ResponseData[offset++];
+				setup_request_data->ChannelData[i].security = sspC->ResponseData[offset++];
 			}
 
 			// Extract the multiplier
 			setup_request_data->RealValueMultiplier = 0;
 			for (i = 0; i < 3; ++i)
-				setup_request_data->RealValueMultiplier +=
-						((unsigned long) sspC->ResponseData[offset++]
-								<< ((2 - i) * 8));
+				setup_request_data->RealValueMultiplier += ((unsigned long) sspC->ResponseData[offset++]
+									    << ((2 - i) * 8));
 
 			// The protocol version
 			setup_request_data->ProtocolVersion = sspC->ResponseData[offset++];
@@ -183,10 +180,9 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 			for (i = 0; i < setup_request_data->NumberOfChannels; i++) {
 				int j;
 				for (j = 0; j < 3; j++)
-					setup_request_data->ChannelData[i].cc[j] =
-							sspC->ResponseData[offset++];
+					setup_request_data->ChannelData[i].cc[j] = sspC->ResponseData[offset++];
 
-				setup_request_data->ChannelData[i].cc[j] = '\0'; // NULL termination
+				setup_request_data->ChannelData[i].cc[j] = '\0';	// NULL termination
 			}
 
 			// for each channel extract the value
@@ -195,7 +191,7 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 				setup_request_data->ChannelData[i].value = 0;
 				for (j = 0; j < 4; j++)
 					setup_request_data->ChannelData[i].value +=
-							sspC->ResponseData[offset++] << (j * 8);
+					    sspC->ResponseData[offset++] << (j * 8);
 			}
 
 		}
@@ -204,7 +200,8 @@ SSP_RESPONSE_ENUM ssp6_setup_request(SSP_COMMAND *sspC,
 }
 
 // send an enable command
-SSP_RESPONSE_ENUM ssp6_enable(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_enable(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -212,8 +209,10 @@ SSP_RESPONSE_ENUM ssp6_enable(SSP_COMMAND *sspC) {
 	resp = _ssp_return_values(sspC);
 	return resp;
 }
+
 // send an enable payout command
-SSP_RESPONSE_ENUM ssp6_enable_payout(SSP_COMMAND *sspC, const char type) {
+SSP_RESPONSE_ENUM ssp6_enable_payout(SSP_COMMAND * sspC, const char type)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -229,8 +228,9 @@ SSP_RESPONSE_ENUM ssp6_enable_payout(SSP_COMMAND *sspC, const char type) {
 }
 
 // send a set inhibits command
-SSP_RESPONSE_ENUM ssp6_set_inhibits(SSP_COMMAND *sspC,
-		const unsigned char lowchannels, const unsigned char highchannels) {
+SSP_RESPONSE_ENUM ssp6_set_inhibits(SSP_COMMAND * sspC,
+				    const unsigned char lowchannels, const unsigned char highchannels)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 3;
@@ -242,7 +242,8 @@ SSP_RESPONSE_ENUM ssp6_set_inhibits(SSP_COMMAND *sspC,
 }
 
 // poll the validator, and extract the responses.
-SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
+SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND * sspC, SSP_POLL_DATA6 * poll_response)
+{
 	SSP_RESPONSE_ENUM resp;
 	unsigned char i, j;
 
@@ -257,8 +258,7 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 
 		for (i = 1; i < sspC->ResponseDataLength; ++i) {
 			// initialise the event structure
-			poll_response->events[poll_response->event_count].event =
-					sspC->ResponseData[i];
+			poll_response->events[poll_response->event_count].event = sspC->ResponseData[i];
 			poll_response->events[poll_response->event_count].data1 = 0;
 			poll_response->events[poll_response->event_count].data2 = 0;
 			poll_response->events[poll_response->event_count].cc[0] = 0;
@@ -267,30 +267,29 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 			poll_response->events[poll_response->event_count].cc[3] = 0;
 
 			switch (sspC->ResponseData[i]) {
-			//all these commands have one data byte
+				//all these commands have one data byte
 			case SSP_POLL_CREDIT:
 			case SSP_POLL_READ:
 			case SSP_POLL_CLEARED_FROM_FRONT:
 			case SSP_POLL_CLEARED_INTO_CASHBOX:
 			case SSP_POLL_CALIBRATION_FAIL:
-				i++; //move onto the data
-				poll_response->events[poll_response->event_count].data1 =
-						sspC->ResponseData[i];
+				i++;	//move onto the data
+				poll_response->events[poll_response->event_count].data1 = sspC->ResponseData[i];
 				break;
 			case SSP_POLL_COIN_CREDIT:
 				{
 					int k;
-				for (k = 0; k < 4; ++k) {
-					i++; //move through the 4 bytes of data
-					poll_response->events[poll_response->event_count].data1 +=
-							(((unsigned long) sspC->ResponseData[i])
-									<< (8 * k)); // METALAB FIX: wrong index (was i)
-				}
-				for (k = 0; k < 3; ++k) { // METALAB FIX: k < 3 (was 4)
-					i++; //move through the 3 bytes of country code
-					poll_response->events[poll_response->event_count].cc[k] +=
-							sspC->ResponseData[i];
-				}
+					for (k = 0; k < 4; ++k) {
+						i++;	//move through the 4 bytes of data
+						poll_response->events[poll_response->event_count].data1 +=
+						    (((unsigned long) sspC->ResponseData[i])
+						     << (8 * k));	// METALAB FIX: wrong index (was i)
+					}
+					for (k = 0; k < 3; ++k) {	// METALAB FIX: k < 3 (was 4)
+						i++;	//move through the 3 bytes of country code
+						poll_response->events[poll_response->event_count].cc[k] +=
+						    sspC->ResponseData[i];
+					}
 				}
 				break;
 				//all these commands have 7 data bytes per country;
@@ -304,86 +303,83 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 			case SSP_POLL_CASHBOX_PAID:
 			case SSP_POLL_SMART_EMPTYING:
 			case SSP_POLL_SMART_EMPTIED:
-			case SSP_POLL_FRAUD_ATTEMPT: {
-				unsigned char event = sspC->ResponseData[i];
-				unsigned int countries;
-				i++; // move onto the country count;
-				countries = (unsigned int) sspC->ResponseData[i];
-				// for every country in the response, make a new event structure and store into it
-				for (j = 0; j < countries; ++j) {
-					int k;
-					poll_response->events[poll_response->event_count].event =
-							event;
-					poll_response->events[poll_response->event_count].data1 = 0;
-					poll_response->events[poll_response->event_count].data2 = 0;
-					poll_response->events[poll_response->event_count].cc[3] =
-							'\0';
+			case SSP_POLL_FRAUD_ATTEMPT:
+				{
+					unsigned char event = sspC->ResponseData[i];
+					unsigned int countries;
+					i++;	// move onto the country count;
+					countries = (unsigned int) sspC->ResponseData[i];
+					// for every country in the response, make a new event structure and store into it
+					for (j = 0; j < countries; ++j) {
+						int k;
+						poll_response->events[poll_response->event_count].event = event;
+						poll_response->events[poll_response->event_count].data1 = 0;
+						poll_response->events[poll_response->event_count].data2 = 0;
+						poll_response->events[poll_response->event_count].cc[3] = '\0';
 
-					for (k = 0; k < 4; ++k) {
-						i++; //move through the 4 bytes of data
-						poll_response->events[poll_response->event_count].data1 +=
-								(((unsigned long) sspC->ResponseData[i])
-										<< (8 * k)); // METALAB FIX: wrong index (was i)
+						for (k = 0; k < 4; ++k) {
+							i++;	//move through the 4 bytes of data
+							poll_response->events[poll_response->event_count].data1 +=
+							    (((unsigned long) sspC->ResponseData[i])
+							     << (8 * k));	// METALAB FIX: wrong index (was i)
+						}
+						for (k = 0; k < 3; ++k) {	// METALAB FIX: k < 3 (was 4)
+							i++;	//move through the 3 bytes of country code
+							poll_response->events[poll_response->event_count].cc[k] +=
+							    sspC->ResponseData[i];
+						}
+
+						// METALAB FIX: fix terminator
+						poll_response->events[poll_response->event_count].cc[3] = '\0';
+
+						if (j != countries - 1)	// the last time through event_count will be updated elsewhere.
+							poll_response->event_count++;
 					}
-					for (k = 0; k < 3; ++k) { // METALAB FIX: k < 3 (was 4)
-						i++; //move through the 3 bytes of country code
-						poll_response->events[poll_response->event_count].cc[k] +=
-								sspC->ResponseData[i];
-					}
 
-					// METALAB FIX: fix terminator
-					poll_response->events[poll_response->event_count].cc[3] =
-							'\0';
-
-					if (j != countries - 1) // the last time through event_count will be updated elsewhere.
-						poll_response->event_count++;
 				}
-
-			}
 				break;
 
 				//all these commands have 11 data bytes per country;
 			case SSP_POLL_INCOMPLETE_PAYOUT:
-			case SSP_POLL_INCOMPLETE_FLOAT: {
-				unsigned int countries;
-				unsigned char event = sspC->ResponseData[i];
-				i++; // move onto the country count;
-				countries = (unsigned int) sspC->ResponseData[i];
-				// for every country in the response, make a new event structure and store into it
-				for (j = 0; j < countries; ++j) {
-					int k;
-					poll_response->events[poll_response->event_count].event =
-							event;
-					poll_response->events[poll_response->event_count].data1 = 0;
-					poll_response->events[poll_response->event_count].data2 = 0;
-					poll_response->events[poll_response->event_count].cc[3] =
-							'\0';
+			case SSP_POLL_INCOMPLETE_FLOAT:
+				{
+					unsigned int countries;
+					unsigned char event = sspC->ResponseData[i];
+					i++;	// move onto the country count;
+					countries = (unsigned int) sspC->ResponseData[i];
+					// for every country in the response, make a new event structure and store into it
+					for (j = 0; j < countries; ++j) {
+						int k;
+						poll_response->events[poll_response->event_count].event = event;
+						poll_response->events[poll_response->event_count].data1 = 0;
+						poll_response->events[poll_response->event_count].data2 = 0;
+						poll_response->events[poll_response->event_count].cc[3] = '\0';
 
-					for (k = 0; k < 4; ++k) {
-						i++; //move through the 4 bytes of data
-						poll_response->events[poll_response->event_count].data1 +=
-								(((unsigned long) sspC->ResponseData[i])
-										<< (8 * k)); // METALAB FIX: wrong index
-					}
-					for (k = 0; k < 4; ++k) {
-						i++; //move through the 4 bytes of data
-						poll_response->events[poll_response->event_count].data2 +=
-								(((unsigned long) sspC->ResponseData[i])
-										<< (8 * k)); // METALAB FIX: wrong index
-					}
-					for (k = 0; k < 3; ++k) {
-						i++; //move through the 3 bytes of country code
-						poll_response->events[poll_response->event_count].cc[k] +=
-								sspC->ResponseData[i];
+						for (k = 0; k < 4; ++k) {
+							i++;	//move through the 4 bytes of data
+							poll_response->events[poll_response->event_count].data1 +=
+							    (((unsigned long) sspC->ResponseData[i])
+							     << (8 * k));	// METALAB FIX: wrong index
+						}
+						for (k = 0; k < 4; ++k) {
+							i++;	//move through the 4 bytes of data
+							poll_response->events[poll_response->event_count].data2 +=
+							    (((unsigned long) sspC->ResponseData[i])
+							     << (8 * k));	// METALAB FIX: wrong index
+						}
+						for (k = 0; k < 3; ++k) {
+							i++;	//move through the 3 bytes of country code
+							poll_response->events[poll_response->event_count].cc[k] +=
+							    sspC->ResponseData[i];
+						}
+
+						if (j != countries - 1)	// the last time through event_count will be updated elsewhere.
+							poll_response->event_count++;
 					}
 
-					if (j != countries - 1) // the last time through event_count will be updated elsewhere.
-						poll_response->event_count++;
 				}
-
-			}
 				break;
-			default: //every other command has no data bytes
+			default:	//every other command has no data bytes
 				poll_response->events[poll_response->event_count].data1 = 0;
 				poll_response->events[poll_response->event_count].data2 = 0;
 				poll_response->events[poll_response->event_count].cc[0] = '\0';
@@ -396,7 +392,8 @@ SSP_RESPONSE_ENUM ssp6_poll(SSP_COMMAND *sspC, SSP_POLL_DATA6 *poll_response) {
 }
 
 // reset the validator
-SSP_RESPONSE_ENUM ssp6_reset(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_reset(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -406,7 +403,8 @@ SSP_RESPONSE_ENUM ssp6_reset(SSP_COMMAND *sspC) {
 }
 
 // disable the payout unit
-SSP_RESPONSE_ENUM ssp6_disable_payout(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_disable_payout(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -417,7 +415,8 @@ SSP_RESPONSE_ENUM ssp6_disable_payout(SSP_COMMAND *sspC) {
 }
 
 // disable the validator
-SSP_RESPONSE_ENUM ssp6_disable(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_disable(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -427,7 +426,8 @@ SSP_RESPONSE_ENUM ssp6_disable(SSP_COMMAND *sspC) {
 }
 
 // payout the next note from an NV11
-SSP_RESPONSE_ENUM ssp6_payout_note(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_payout_note(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -438,7 +438,8 @@ SSP_RESPONSE_ENUM ssp6_payout_note(SSP_COMMAND *sspC) {
 }
 
 // stack the next note in the NV11
-SSP_RESPONSE_ENUM ssp6_stack_note(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_stack_note(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -449,7 +450,8 @@ SSP_RESPONSE_ENUM ssp6_stack_note(SSP_COMMAND *sspC) {
 }
 
 // run a calibration sequence on the hopper
-SSP_RESPONSE_ENUM ssp6_run_calibration(SSP_COMMAND *sspC) {
+SSP_RESPONSE_ENUM ssp6_run_calibration(SSP_COMMAND * sspC)
+{
 	SSP_RESPONSE_ENUM resp;
 
 	sspC->CommandDataLength = 1;
@@ -459,8 +461,9 @@ SSP_RESPONSE_ENUM ssp6_run_calibration(SSP_COMMAND *sspC) {
 }
 
 // set the inhibits for the atached coinmech
-SSP_RESPONSE_ENUM ssp6_set_coinmech_inhibits(SSP_COMMAND *sspC,
-		unsigned int value, const char *cc, enum channel_state state) {
+SSP_RESPONSE_ENUM ssp6_set_coinmech_inhibits(SSP_COMMAND * sspC,
+					     unsigned int value, const char *cc, enum channel_state state)
+{
 	SSP_RESPONSE_ENUM resp;
 	int i;
 
@@ -476,4 +479,3 @@ SSP_RESPONSE_ENUM ssp6_set_coinmech_inhibits(SSP_COMMAND *sspC,
 	resp = _ssp_return_values(sspC);
 	return resp;
 }
-

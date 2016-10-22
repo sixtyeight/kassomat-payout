@@ -18,20 +18,20 @@ unsigned long long GeneratePrime(void)
 {
 	unsigned long long tmp = 0;
 
-	tmp	=  GenerateRandomNumber();
-	tmp	%= MAX_PRIME_NUMBER;
+	tmp = GenerateRandomNumber();
+	tmp %= MAX_PRIME_NUMBER;
 
-	/*  ensure it is an odd number	*/
-	if ((tmp & 1)==0)
+	/*  ensure it is an odd number  */
+	if ((tmp & 1) == 0)
 		tmp += 1;
 
 	/* test for prime  */
-	if (MillerRabin(tmp,5)==1) return tmp;
+	if (MillerRabin(tmp, 5) == 1)
+		return tmp;
 	/*  increment until prime  */
-	do
-	{
-		tmp+=2;
-	} while (MillerRabin(tmp,5)==0);
+	do {
+		tmp += 2;
+	} while (MillerRabin(tmp, 5) == 0);
 
 	return tmp;
 }
@@ -42,29 +42,28 @@ unsigned long long GeneratePrime(void)
 |	is not 100% accurate it may be a composite.  However setting the trial
 |	value to around 5 should guarantee success even with very large primes		*/
 
-unsigned char MillerRabin (long long n, long long trials)
+unsigned char MillerRabin(long long n, long long trials)
 {
 	long long a = 0;
-    long long i;
-	for (i=0; i<trials; i++)
-	{
-		a = (rand() % (n-3))+2;/* gets random value in [2..n-1] */
+	long long i;
+	for (i = 0; i < trials; i++) {
+		a = (rand() % (n - 3)) + 2;	/* gets random value in [2..n-1] */
 
-		if (IsItPrime (n,a)==0)
-		{
+		if (IsItPrime(n, a) == 0) {
 			return 0;
 			/*n composite, return false */
 		}
-	} return 1; /* n probably prime */
+	}
+	return 1;		/* n probably prime */
 }
 
 
 /* Checks the integer n for primality		*/
 
-unsigned char IsItPrime (long long n, long long a)
+unsigned char IsItPrime(long long n, long long a)
 {
-	long long d = XpowYmodN(a, n-1, n);
-	if (d==1)
+	long long d = XpowYmodN(a, n - 1, n);
+	if (d == 1)
 		return 1;
 	else
 		return 0;
@@ -79,14 +78,15 @@ unsigned char IsItPrime (long long n, long long a)
 
 long long XpowYmodN(long long x, long long y, long long N)
 {
-    int i;
+	int i;
 	long long result = 1;
 
-	const long long oneShift63 = (( long long) 1) << 63;
+	const long long oneShift63 = ((long long) 1) << 63;
 
-    if (y==1) return (x % N);
+	if (y == 1)
+		return (x % N);
 
-	for (i = 0; i < 64; y <<= 1, i++){
+	for (i = 0; i < 64; y <<= 1, i++) {
 		result = result * result % N;
 		if (y & oneShift63)
 			result = result * x % N;
@@ -104,8 +104,8 @@ long long XpowYmodN(long long x, long long y, long long N)
 unsigned long long GenerateRandomNumber(void)
 {
 	unsigned long rnd = 0x41594c49;
-	unsigned long x   = 0x94c49514;
-	long long  n;
+	unsigned long x = 0x94c49514;
+	long long n;
 	unsigned long long ret;
 
 
@@ -113,11 +113,11 @@ unsigned long long GenerateRandomNumber(void)
 
 	n = GetRTSC();
 
-	rnd ^= n^x;
+	rnd ^= n ^ x;
 
-	ROT(rnd,7);
+	ROT(rnd, 7);
 
-	ret = (unsigned long long)GetRTSC() + (unsigned long long)rnd;
+	ret = (unsigned long long) GetRTSC() + (unsigned long long) rnd;
 
 	return ret;
 }
@@ -132,8 +132,7 @@ unsigned long long GenerateRandomNumber(void)
 |	The instruction returns in registers EDX:EAX the count of ticks from processor reset.
 |	Added in Pentium. Opcode: 0F 31.				*/
 
-long long GetRTSC( void )
+long long GetRTSC(void)
 {
-  return (long long) time(NULL);
+	return (long long) time(NULL);
 }
-
