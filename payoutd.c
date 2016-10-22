@@ -97,6 +97,8 @@ struct m_metacash {
 	char *serialDevice;
 	/** \brief Should the hardware accept coins at all (default off for now) */
 	int acceptCoins;
+	/** \brief Should the syslog messages also be written to stderr (default no, enable with -e) */
+	int logSyslogStderr;
 
 	/** \brief The port of the redis server to which we connect */
 	int redisPort;
@@ -1248,6 +1250,7 @@ int main(int argc, char *argv[]) {
 	struct m_metacash metacash;
 	metacash.deviceAvailable = 0;
 	metacash.quit = 0;
+	metacash.logSyslogStderr = 0; // default, override using -e
 	metacash.acceptCoins = 0; // default, override using -c
 
 	metacash.serialDevice = "/dev/ttyACM0";	// default, override with -d argument
@@ -1268,6 +1271,13 @@ int main(int argc, char *argv[]) {
 	if (parseCmdLine(argc, argv, &metacash)) {
 		die("invalid command line", 1);
 		// never reached, already exited
+	}
+
+	if(metacash.logSyslogStderr) {
+		closelog();
+		// also writeout syslog messages to stderr (intended for development purposes, you
+		// can enable this with the -e argument)
+		openlog("payoutd", LOG_PERROR | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 	}
 
 	syslog(LOG_NOTICE, "using redis at %s:%d and hardware device %s",
@@ -1320,7 +1330,7 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 	opterr = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "ch:p:d:")) != -1) {
+	while ((c = getopt(argc, argv, "ech:p:d:")) != -1) {
 		switch (c) {
 		case 'h':
 			metacash->redisHost = optarg;
@@ -1334,16 +1344,23 @@ int parseCmdLine(int argc, char *argv[], struct m_metacash *metacash) {
 		case 'c':
 			metacash->acceptCoins = 1;
 			break;
+		case 'e':
+			metacash->logSyslogStderr = 1;
+			break;
 		case '?':
 			if (optopt == 'h' || optopt == 'p' || optopt == 'd') {
+				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
 				syslog(LOG_ERR, "Option -%c requires an argument.\n", optopt);
 			} else if (isprint(optopt)) {
+				fprintf(stderr, "Unknown option '-%c'.\n", optopt);
 				syslog(LOG_ERR, "Unknown option '-%c'.\n", optopt);
 			} else {
+				fprintf(stderr, "Unknown option character 'x%x'.\n", optopt);
 				syslog(LOG_ERR, "Unknown option character 'x%x'.\n", optopt);
 			}
 			return 1;
 		default:
+			fprintf(stderr, "Unknown argument: %c", c);
 			syslog(LOG_ERR, "Unknown argument: %c", c);
 			return 1;
 		}
