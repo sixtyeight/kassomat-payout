@@ -160,6 +160,8 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 #define SSP_CMD_CONFIGURE_BEZEL 0x54
 /** \brief Magic Constant for the "SMART EMPTY" command ID as specified in SSP */
 #define SSP_CMD_SMART_EMPTY 0x52
+/** \brief Magic Constant for the "CASHBOX PAYOUT OPERATION DATA" command ID as specified in SSP */
+#define SSP_CMD_CASHBOX_PAYOUT_OPERATION_DATA 0x53
 /** \brief Magic Constant for the "SET REFILL MODE " command ID as specified in SSP */
 #define SSP_CMD_SET_REFILL_MODE 0x30
 /** \brief Magic Constant for the "DISPLAY OFF" command ID as specified in SSP */
@@ -169,6 +171,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC);
+SSP_RESPONSE_ENUM mc_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **json);
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r, unsigned char g,
 		unsigned char b, unsigned char volatileOption, unsigned char bezelTypeOption);
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
@@ -822,6 +825,24 @@ void handleGetAllLevels(struct m_command *cmd) {
 }
 
 /**
+ * \brief Handles the JSON "cashbox-payout-operation-data" command.
+ */
+void handleCashboxPayoutOperationData(struct m_command *cmd) {
+	char *json = NULL;
+
+	SSP_RESPONSE_ENUM resp = mc_cashbox_payout_operation_data(&cmd->device->sspC, &json);
+
+	if(resp == SSP_RESPONSE_OK) {
+		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->correlId, json);
+	} else {
+		replyWithSspResponse(cmd, resp);
+	}
+
+	free(json);
+}
+
+
+/**
  * \brief Handles the JSON "get-firmware-version" command.
  */
 void handleGetFirmwareVersion(struct m_command *cmd) {
@@ -1125,6 +1146,8 @@ void cbOnRequestMessage(redisAsyncContext *c, void *r, void *privdata) {
 						handleEmpty(&cmd);
 					} else if (isCommand(&cmd, "smart-empty")) {
 						handleSmartEmpty(&cmd);
+					} else if (isCommand(&cmd, "cashbox-payout-operation-data")) {
+						handleCashboxPayoutOperationData(&cmd);
 					} else if (isCommand(&cmd, "enable")) {
 						handleEnable(&cmd);
 					} else if (isCommand(&cmd, "disable")) {
@@ -2063,6 +2086,102 @@ SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 
 	return resp;
 }
+
+
+SSP_RESPONSE_ENUM mc_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **json) {
+	sspC->CommandDataLength = 1;
+	sspC->CommandData[0] = SSP_CMD_CASHBOX_PAYOUT_OPERATION_DATA;
+
+	//CHECK FOR TIMEOUT
+	if (send_ssp_command(sspC) == 0) {
+		return SSP_RESPONSE_TIMEOUT;
+	}
+
+	// extract the device response code
+	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
+
+	/* The first data byte in the response is the number of counters returned. Each counter consists of 9 bytes of
+	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ASCII country
+	 * code.
+	 */
+
+	int i = 0;
+
+	i++; // move onto numCounters
+	int numCounters = sspC->ResponseData[i];
+
+	/* Create StringBuffer 'object' (struct) */
+	SB *sb = getStringBuffer();
+
+	int j; // current counter
+	for (j = 0; j < numCounters; ++j) {
+		int k;
+
+		int value = 0;
+		int level = 0;
+		char cc[4] = {0};
+
+		for (k = 0; k < 2; ++k) {
+			i++; //move through the 2 bytes of data
+			level +=
+					(((unsigned long) sspC->ResponseData[i])
+							<< (8 * k));
+		}
+		for (k = 0; k < 4; ++k) {
+			i++; //move through the 4 bytes of data
+			value +=
+					(((unsigned long) sspC->ResponseData[i])
+							<< (8 * k));
+		}
+		for (k = 0; k < 3; ++k) {
+			i++; //move through the 3 bytes of country code
+			cc[k] =
+					sspC->ResponseData[i];
+		}
+
+		char *response = NULL;
+		asprintf(&response,
+				"{\"value\":%d,\"level\":%d,\"cc\":\"%s\"}", value, level, cc);
+
+		if(j > 0) {
+			char *sep = ",";
+			sb->append( sb, sep); // json array seperator
+		}
+		sb->append( sb, response);
+
+		free(response);
+	}
+
+	/* quantity of unknown coins */
+	{
+		int qtyUnknown = 0;
+		for (int k = 0; k < 3; ++k) {
+			i++; //move through the 4 bytes of data
+			qtyUnknown +=
+					(((unsigned long) sspC->ResponseData[i])
+							<< (8 * k));
+		}
+		char *response = NULL;
+		asprintf(&response,
+				",{\"value\":%d,\"level\":%d}", 0, qtyUnknown);
+		// json array seperator fixed in front here
+
+		sb->append( sb, response);
+
+		free(response);
+	}
+
+	/* Call toString() function to get catenated list */
+	char *result = sb->toString( sb );
+
+	asprintf(json, "%s", result);
+
+	/* Dispose of StringBuffer's memory */
+	sb->dispose( &sb ); /* Note: Need to pass ADDRESS of struct pointer to dispose() */
+
+	return resp;
+}
+
 
 /**
  * \brief Implements the "CONFIGURE BEZEL" command from the SSP Protocol.
