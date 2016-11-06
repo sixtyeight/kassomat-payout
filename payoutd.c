@@ -171,7 +171,7 @@ void mcSspPollDevice(struct m_device *device, struct m_metacash *metacash);
 
 SSP_RESPONSE_ENUM mc_ssp_empty(SSP_COMMAND *sspC);
 SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC);
-SSP_RESPONSE_ENUM mc_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **json);
+SSP_RESPONSE_ENUM mc_ssp_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **json);
 SSP_RESPONSE_ENUM mc_ssp_configure_bezel(SSP_COMMAND *sspC, unsigned char r, unsigned char g,
 		unsigned char b, unsigned char volatileOption, unsigned char bezelTypeOption);
 SSP_RESPONSE_ENUM mc_ssp_display_on(SSP_COMMAND *sspC);
@@ -830,7 +830,7 @@ void handleGetAllLevels(struct m_command *cmd) {
 void handleCashboxPayoutOperationData(struct m_command *cmd) {
 	char *json = NULL;
 
-	SSP_RESPONSE_ENUM resp = mc_cashbox_payout_operation_data(&cmd->device->sspC, &json);
+	SSP_RESPONSE_ENUM resp = mc_ssp_cashbox_payout_operation_data(&cmd->device->sspC, &json);
 
 	if(resp == SSP_RESPONSE_OK) {
 		replyWith(cmd->responseTopic, "{\"correlId\":\"%s\",\"levels\":[%s]}", cmd->correlId, json);
@@ -2088,7 +2088,7 @@ SSP_RESPONSE_ENUM mc_ssp_smart_empty(SSP_COMMAND *sspC) {
 }
 
 
-SSP_RESPONSE_ENUM mc_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **json) {
+SSP_RESPONSE_ENUM mc_ssp_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **json) {
 	sspC->CommandDataLength = 1;
 	sspC->CommandData[0] = SSP_CMD_CASHBOX_PAYOUT_OPERATION_DATA;
 
@@ -2100,9 +2100,13 @@ SSP_RESPONSE_ENUM mc_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **jso
 	// extract the device response code
 	SSP_RESPONSE_ENUM resp = (SSP_RESPONSE_ENUM) sspC->ResponseData[0];
 
+	if(resp != SSP_RESPONSE_OK) {
+		return resp;
+	}
+
 	/* The first data byte in the response is the number of counters returned. Each counter consists of 9 bytes of
 	 * data made up as: 2 bytes giving the denomination level, 4 bytes giving the value and 3 bytes of ASCII country
-	 * code.
+	 * code. The last 4 bytes of data indicate the quantity of coins which could not be identified.
 	 */
 
 	int i = 0;
@@ -2163,8 +2167,8 @@ SSP_RESPONSE_ENUM mc_cashbox_payout_operation_data(SSP_COMMAND *sspC, char **jso
 		}
 		char *response = NULL;
 		asprintf(&response,
-				",{\"value\":%d,\"level\":%d}", 0, qtyUnknown);
-		// json array seperator fixed in front here
+				",{\"value\":0,\"level\":%d}", qtyUnknown);
+		// json array seperator and value are constant here
 
 		sb->append( sb, response);
 
